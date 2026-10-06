@@ -1,0 +1,478 @@
+<style>
+:root{
+  --bg:#F6F7F9; --panel:#FFFFFF; --ink:#0F172A; --ink2:#1F2937; --muted:#64748B;
+  --line:#E4E8EE; --soft:#F1F5F9;
+  --brand:#0D9488; --brand-ink:#0B6B63;
+  --amber:#D97706; --rose:#BE123C; --emerald:#047857; --violet:#6D28D9;
+  --hover:#F0F6F5;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1320px;margin:auto;padding:28px 26px 48px}
+
+/* Header */
+header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+.title-row h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-0.01em}
+.title-row p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;background:#E6F4F2;color:var(--brand-ink);padding:5px 11px;border-radius:99px;font-size:12px;font-weight:600}
+.badge::before{content:"";width:7px;height:7px;background:var(--brand);border-radius:99px;box-shadow:0 0 0 3px rgba(13,148,136,.18)}
+button.btn{background:var(--ink);color:#fff;border:0;border-radius:7px;padding:9px 14px;cursor:pointer;font-weight:600;font-size:12.5px;transition:background .15s}
+button.btn:hover{background:#1F2937}
+button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.btn.ghost:hover{background:var(--soft)}
+
+/* Filters */
+.filters{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px;align-items:end;margin-bottom:16px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.field{display:grid;gap:6px;min-width:0}
+.field.wide{grid-column:span 2}
+label{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+select,input{font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:#fff;color:var(--ink);width:100%;height:38px;transition:border-color .15s}
+select:focus,input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(13,148,136,.14)}
+.filters .reset{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:0 14px;height:38px;cursor:pointer;font-weight:600;font-size:12.5px;justify-self:start}
+.filters .reset:hover{background:var(--soft)}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.kpi .label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.kpi .value{font-size:30px;font-weight:700;line-height:1.1;margin-top:6px;letter-spacing:-0.02em}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand)}
+.kpi.k2 .accent{background:var(--rose)}
+.kpi.k3 .accent{background:var(--violet)}
+.kpi.k4 .accent{background:var(--amber)}
+
+/* Panels & grid */
+.row{display:grid;gap:14px;margin:14px 0}
+.row.r2{grid-template-columns:1fr 1fr}
+.row.r3{grid-template-columns:1.3fr 1fr 1fr}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.03);min-width:0}
+.panel h2{font-size:13px;font-weight:700;margin:0 0 10px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.panel .sub{color:var(--muted);font-size:11.5px;margin-top:-6px;margin-bottom:10px}
+
+/* Horizontal bars */
+.chartbar{all:unset;cursor:pointer;display:grid;grid-template-columns:minmax(120px,1.3fr) 4fr 36px;gap:10px;align-items:center;margin:7px 0;font-size:12.5px;padding:4px 6px;border-radius:6px;color:var(--ink)}
+.chartbar:hover{background:var(--hover)}
+.chartbar.active{background:#E6F4F2;outline:1px solid var(--brand)}
+.chartbar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chartbar .track{height:8px;background:#EEF2F6;border-radius:99px;overflow:hidden}
+.chartbar .fill{display:block;height:100%;background:var(--brand);border-radius:99px}
+.chartbar .count{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink2)}
+
+/* Donut legend */
+.donutwrap{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center}
+.legend{display:grid;gap:8px}
+.legend .row-l{display:grid;grid-template-columns:14px 1fr auto auto;gap:10px;align-items:center;font-size:12.5px;cursor:pointer;padding:5px 6px;border-radius:6px}
+.legend .row-l:hover{background:var(--hover)}
+.legend .row-l.active{background:#E6F4F2;outline:1px solid var(--brand)}
+.legend .sw{width:12px;height:12px;border-radius:3px}
+.legend .pct{color:var(--muted);font-variant-numeric:tabular-nums}
+.legend .n{font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink2)}
+
+/* Trend */
+.trendwrap{position:relative}
+.trend{display:flex;align-items:flex-end;gap:5px;height:150px;padding:4px 0 0;position:relative;z-index:1}
+.trend .col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;gap:4px;position:relative}
+.trend .stack{width:100%;position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:2px;border-radius:3px 3px 0 0;overflow:hidden;cursor:default}
+.trend .seg-ok{background:#D6E7E4}
+.trend .seg-rework{background:var(--rose)}
+.trend .col:hover .seg-ok{background:#B6D4CF}
+.trend .col:hover .seg-rework{background:#9F0F32}
+.trend .pct{font-size:9.5px;color:var(--rose);font-weight:700;font-variant-numeric:tabular-nums;position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap}
+.trend .lab{font-size:9.5px;color:var(--muted);white-space:nowrap;transform:rotate(-45deg);transform-origin:top left;height:14px;letter-spacing:.02em;margin-top:6px}
+.trend-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:8px 0 2px}
+.trend-legend .k{display:inline-flex;align-items:center;gap:6px}
+.trend-legend .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.trend-stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:4px}
+.trend-stats b{color:var(--ink);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.trend-stats .rate b{color:var(--rose)}
+
+/* Table */
+.audit-dropdown{margin:18px 0 10px}
+.audit-dropdown>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;font-weight:700;font-size:14px}
+.audit-dropdown>summary::-webkit-details-marker{display:none}
+.audit-dropdown>summary:after{content:"▾";margin-left:12px;color:var(--brand);font-size:11px}
+.audit-dropdown:not([open])>summary:after{content:"▸"}
+.audit-dropdown[open]>summary{border-radius:10px 10px 0 0;border-bottom:0}
+.rowcount{color:var(--muted);font-weight:500;font-size:12.5px;margin-left:6px}
+.tablewrap{overflow:auto;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px}
+.tableactions{display:flex;justify-content:flex-end;padding:10px 12px;background:#FAFBFC;border-bottom:1px solid var(--line)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:11px 12px;vertical-align:top;border-bottom:1px solid var(--line);font-size:12.5px}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:#FAFBFC;font-weight:700}
+tbody tr:hover{background:var(--soft)}
+tbody tr{border-left:3px solid transparent}
+tbody tr.Human{border-left-color:var(--rose)}
+tbody tr.Auditor{border-left-color:var(--amber)}
+tbody tr.Product{border-left-color:var(--violet)}
+.attrib{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:11.5px;padding:3px 10px;border-radius:99px}
+.attrib.Human{background:#FCE7EB;color:var(--rose)}
+.attrib.Auditor{background:#FEF3C7;color:#92400E}
+.attrib.Product{background:#EDE9FE;color:var(--violet)}
+.pill{display:inline-block;border-radius:99px;padding:3px 10px;background:#EEF2F6;font-size:11px;font-weight:600;color:var(--muted)}
+.pill.yes{background:#FEE2E2;color:var(--rose)}
+.pill.no{background:#D1FAE5;color:var(--emerald)}
+.issue{min-width:260px;max-width:440px}
+td a{color:var(--brand-ink);text-decoration:none;font-weight:600}
+td a:hover{text-decoration:underline}
+.empty{text-align:center;padding:32px;color:var(--muted)}
+
+.foot{color:var(--muted);font-size:11px;margin:18px 2px 0;line-height:1.6}
+
+/* Dark-mode respecting but keep brand */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0B1220;--panel:#111827;--ink:#E5E7EB;--ink2:#F3F4F6;--muted:#94A3B8;--line:#1F2937;--soft:#0F172A;--hover:#13263A}
+  :root:not([data-theme="light"]) select,:root:not([data-theme="light"]) input{background:#0F172A;color:#E5E7EB}
+  :root:not([data-theme="light"]) th{background:#0F172A}
+  :root:not([data-theme="light"]) .tableactions{background:#0F172A}
+  :root:not([data-theme="light"]) tbody tr:hover{background:#13263A}
+  :root:not([data-theme="light"]) .chartbar .track{background:#1F2937}
+  :root:not([data-theme="light"]) .attrib.Human{background:#3B1119;color:#FCA5A5}
+  :root:not([data-theme="light"]) .attrib.Auditor{background:#3A2A08;color:#FCD34D}
+  :root:not([data-theme="light"]) .attrib.Product{background:#241A4D;color:#C4B5FD}
+  :root:not([data-theme="light"]) .pill{background:#1F2937;color:#94A3B8}
+  :root:not([data-theme="light"]) .pill.yes{background:#3B1119;color:#FCA5A5}
+  :root:not([data-theme="light"]) .pill.no{background:#063B2B;color:#6EE7B7}
+  :root:not([data-theme="light"]) .badge{background:#083833;color:#5EEAD4}
+  :root:not([data-theme="light"]) .kpi,:root:not([data-theme="light"]) .panel,:root:not([data-theme="light"]) .filters,:root:not([data-theme="light"]) .audit-dropdown>summary{box-shadow:none}
+}
+
+@media(max-width:1100px){
+  .filters{grid-template-columns:repeat(4,1fr)}
+  .row.r3{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .filters{grid-template-columns:repeat(2,1fr)}
+  .wrap{padding:16px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .row.r2,.row.r3{grid-template-columns:1fr}
+  .donutwrap{grid-template-columns:1fr}
+}
+</style>
+<title>Human Audit Dashboard</title>
+<main class="wrap">
+<header class="top">
+  <div class="title-row">
+    <h1>Human Audit Dashboard</h1>
+    <p>Agent miss patterns, audit attribution, and case-level follow-up</p>
+  </div>
+  <div class="header-actions">
+    <span class="badge" id="periodBadge">All months</span>
+    <button class="btn ghost" id="downloadHtml" type="button">Download HTML</button>
+  </div>
+</header>
+
+<section class="filters">
+  <div class="field"><label for="grain">Date view</label>
+    <select id="grain"><option value="day">Day</option><option value="week">Week</option><option value="month" selected>Month</option></select>
+  </div>
+  <div class="field"><label id="periodLabel" for="period">Choose month</label>
+    <select id="period"><option value="">All months</option></select>
+    <input id="calendarDate" type="date" aria-label="Choose a specific audit date" hidden>
+  </div>
+  <div class="field"><label for="agent">Agent</label><select id="agent"></select></div>
+  <div class="field"><label for="program">Program</label><select id="program"></select></div>
+  <div class="field"><label for="attribution">Attribution</label><select id="attribution"></select></div>
+  <div class="field"><label for="category">Issue category</label><select id="category"></select></div>
+  <div class="field wide"><label for="search">Search issue / case</label><input id="search" placeholder="Type to search issues, agents, cases…"></div>
+  <button class="reset" id="reset" type="button">Reset</button>
+</section>
+
+<section class="kpis" id="kpis"></section>
+
+<section class="row r2">
+  <div class="panel">
+    <h2>Attribution mix</h2>
+    <div class="sub">Human · Auditor · Product</div>
+    <div class="donutwrap">
+      <svg id="donut" viewBox="0 0 120 120" width="150" height="150" aria-label="Attribution donut"></svg>
+      <div class="legend" id="attributions"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Program mix</h2>
+    <div class="sub">Click a program to filter</div>
+    <div id="programs"></div>
+  </div>
+</section>
+
+<section class="row r2">
+  <div class="panel">
+    <h2>Issues by category</h2>
+    <div class="sub">Click a category to drill in</div>
+    <div id="categories"></div>
+  </div>
+  <div class="panel">
+    <h2>Agents with most recorded issues</h2>
+    <div class="sub">Top 12 shown · click a name to isolate</div>
+    <div id="agents"></div>
+  </div>
+</section>
+
+<details class="audit-dropdown">
+  <summary><span>Audit records<span class="rowcount" id="rowCount">(0)</span></span><span style="color:var(--muted);font-weight:500;font-size:12px">Click to expand or collapse</span></summary>
+  <div class="tableactions"><button class="btn" id="download" type="button">Download filtered CSV</button></div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Call date</th><th>Agent</th><th>Program</th><th>Category</th><th>Issue details</th><th>Attribution</th><th>Escalated</th><th>Case</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</details>
+
+<p class="foot">Source: Agent_Miss_Tracker.xlsx · Metrics count logged rows, not unique agents or audited-call denominators · Month follows the source Month field · "Human" is the source mistake attribution.</p>
+</main>
+<script>
+window.DATA=[{"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Intiyaj", "caseId": "6abaade3dbaaa28c1346ba41", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaade3dbaaa28c1346ba41", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Entered Pre-D details in PA.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Trilok Srinivas", "caseId": "6abaccacdbaaa28c1347c5e8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaccacdbaaa28c1347c5e8", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Pre-D name was not asked.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Megha Rai", "caseId": "6abab555dbaaa28c1346fc9f", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abab555dbaaa28c1346fc9f", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Mohammed Zeeshan Rathod", "caseId": "6abaab29dbaaa28c1346a05c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaab29dbaaa28c1346a05c", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Pavan Kumar Kalasu", "caseId": "6abbaebece34a19dbe710548", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbaebece34a19dbe710548", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "Missed to take PA submission method", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Manoj G", "caseId": "6ababf21dbaaa28c1347569d", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ababf21dbaaa28c1347569d", "program": "J&J Immunology", "category": "Wrong Disposition", "issue": "Could have marked Benefits already released as dispo, for auto approved.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Mohammed Zeeshan Rathod", "caseId": "6abab442dbaaa28c1346f2eb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abab442dbaaa28c1346f2eb", "program": "J&J Neuroscience", "category": "Documentation Error", "issue": "The data was not properly entered or saved, resulting in missing information.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Pavan Kumar Kalasu", "caseId": "6abbb9b23790c3b70181145d", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbb9b23790c3b70181145d", "program": "J&J Immunology", "category": "Step therapy", "issue": "Missed to confirm the conflicting info for PA on file status", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abbb1bbce34a19dbe7114ab", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbb1bbce34a19dbe7114ab", "program": "J&J Neuroscience", "category": "Specialty pharmacy", "issue": "Missed to get info on B&B, SP and PA due to SLA risk, but sent case back to get full info.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Thejashwini R", "caseId": "6abbc659ce34a19dbe71aed3", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbc659ce34a19dbe71aed3", "program": "J&J Immunology", "category": "Step therapy", "issue": "Missed to ask Step Therapy", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abba9b3ce34a19dbe70f366", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abba9b3ce34a19dbe70f366", "program": "J&J Immunology", "category": "Coverage", "issue": "J1745 is not covered; this was not asked. Reason for Non-Coverage", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Christopher Samson", "caseId": "6abbfcb63790c3b70183352c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbfcb63790c3b70183352c", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Pre-D name and fax number not confirmed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Intiyaj", "caseId": "6abbf81b3790c3b701831162", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbf81b3790c3b701831162", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "TAT was Missed to ask.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Anushiya S", "caseId": "6abd0b38ce34a19dbe765d21", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6abd0b38ce34a19dbe765d21", "program": "Sandoz", "category": "Coverage", "issue": "Missed coverage-determination for CPT", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Anushiya S", "caseId": "6abd0f063790c3b701867710", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd0f063790c3b701867710", "program": "J&J Neuroscience", "category": "Coverage", "issue": "Missed coverage-determination", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Christopher Samson", "caseId": "6abc1d163790c3b701844fcc", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abc1d163790c3b701844fcc", "program": "J&J Neuroscience", "category": "Documentation Error", "issue": "Documentation Error", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abd20153790c3b70186f9a2", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd20153790c3b70186f9a2", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "TAT was Missed to ask.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Sanjay S Kumar", "caseId": "6abd6c86ce34a19dbe792a67", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd6c86ce34a19dbe792a67", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D for the J code", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Santhosh S", "caseId": "6abe52d86e4fc9df1cbc94f9", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abe52d86e4fc9df1cbc94f9", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D for the J code", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Christopher Samson", "caseId": "6abe58e86e4fc9df1cbcb58a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abe58e86e4fc9df1cbcb58a", "program": "J&J Neuroscience", "category": "Coverage", "issue": "Confirmed worng benfits over the call, later obtanied the correct benfits", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Nirmal Kandhesh B", "caseId": "6abe57526e4fc9df1cbcaceb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abe57526e4fc9df1cbcaceb", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Sumit Chetry", "caseId": "6abe80326e4fc9df1cbdfaa8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-697348961ab5e97a33f32776/cases/6abe80326e4fc9df1cbdfaa8", "program": "Ipsen", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Intiyaj", "caseId": "6abeab546e4fc9df1cbf38ef", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abeab546e4fc9df1cbf38ef", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Banupriya Rajan", "caseId": "6abec8886e4fc9df1cc0007a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abec8886e4fc9df1cc0007a", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Keerthana K", "caseId": "6abf0c306e4fc9df1cc0a6f4", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abf0c306e4fc9df1cc0a6f4", "program": "J&J Immunology", "category": "No error", "issue": "In the 1st human call rep confirmed they can use any US, can be close with this info", "escalated": "No", "mistake": "Auditor", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Rakhesh Rohidas Pal", "caseId": "6abed7206e4fc9df1cc04f80", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abed7206e4fc9df1cc04f80", "program": "J&J Neuroscience", "category": "No error", "issue": "Agent asked about the Step-Therapy", "escalated": "N/A", "mistake": "Product", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Keerthana K", "caseId": "6abfa60c13f0dde7ac185b95", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abfa60c13f0dde7ac185b95", "program": "J&J Neuroscience", "category": "No error", "issue": "Auditor misheard the call, which led to case sent back to agent", "escalated": "No", "mistake": "Auditor", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Jyoti Sharma", "caseId": "6ac00b7013f0dde7ac1b2f69", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac00b7013f0dde7ac1b2f69", "program": "J&J Immunology", "category": "OOPM Confirmation", "issue": "OOPM Confirmation missed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Abdul Shahid", "caseId": "6abfe56213f0dde7ac1a1ac3", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6abfe56213f0dde7ac1a1ac3", "program": "Sandoz", "category": "PA/Per-D missed info", "issue": "Auth eff date discrepancy", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sanjay S Kumar", "caseId": "6ac01c4d13f0dde7ac1baa60", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac01c4d13f0dde7ac1baa60", "program": "J&J Immunology", "category": "Coverage", "issue": "Incorrect benfits was taken \"infusion\".", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Srinivasan Baskaran", "caseId": "6ac0268613f0dde7ac1bde68", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac0268613f0dde7ac1bde68", "program": "Sandoz", "category": "AFP/Max/Acc", "issue": "Alternate-funding question was never asked", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Anushiya S", "caseId": "6ac3b629c1611d0d21aa0f1a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac3b629c1611d0d21aa0f1a", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "PA/Per-D Information missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Junaid R", "caseId": "6ac3a952c1611d0d21a9ad00", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac3a952c1611d0d21a9ad00", "program": "Sandoz", "category": "PA/Per-D missed info", "issue": "PA name and phone number missing", "escalated": "N/A", "mistake": "Product", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sudharshan S", "caseId": "6ac0242f13f0dde7ac1bd34c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac0242f13f0dde7ac1bd34c", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "PA/Per-D Information missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Banupriya Rajan", "caseId": "6abffe9013f0dde7ac1acedb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abffe9013f0dde7ac1acedb", "program": "J&J Neuroscience", "category": "OOPM Confirmation", "issue": "OOPM Confirmation missed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sudharshan S", "caseId": "6ac3b6d7c1611d0d21aa14d8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac3b6d7c1611d0d21aa14d8", "program": "Sandoz", "category": "OOPM Confirmation", "issue": "Agent didnt give codes, insted asked as \"covered 100%\" for the service , hence escalate to audit.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Anushiya S", "caseId": "6ac3d4d3c1611d0d21aaf6ac", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac3d4d3c1611d0d21aaf6ac", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "SP Number is missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}];
+const DATA = window.DATA;
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fields = ['agent','program','attribution','category'];
+const ATTR_COLOR = { Human:'#BE123C', Auditor:'#D97706', Product:'#6D28D9' };
+const PROG_COLORS = ['#0D9488','#047857','#2563EB','#9333EA','#EA580C'];
+let focus = null, exactCalendarDate = '';
+
+function uniq(k){ return [...new Set(DATA.map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function options(id, values, label){
+  $(id).innerHTML = '<option value="">'+label+'</option>'+values.map(v=>'<option>'+esc(v)+'</option>').join('');
+}
+options('agent', uniq('agent'), 'All agents');
+options('program', uniq('program'), 'All programs');
+options('attribution', uniq('mistake'), 'All types');
+options('category', uniq('category'), 'All categories');
+
+function dateObj(r){ return new Date(r.callDate + ' 12:00:00'); }
+function isoDate(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function periodKeyForDate(d){
+  const g = $('grain').value;
+  if(g==='day') return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  if(g==='week'){
+    const m = new Date(d); m.setHours(12,0,0,0); m.setDate(m.getDate()-((m.getDay()+6)%7));
+    const e = new Date(m); e.setDate(e.getDate()+6);
+    const thu = new Date(d); thu.setDate(thu.getDate()+4-(thu.getDay()||7));
+    const jan1 = new Date(thu.getFullYear(),0,1);
+    const week = Math.ceil((((thu-jan1)/86400000)+1)/7);
+    const sameMonth = m.getMonth()===e.getMonth()&&m.getFullYear()===e.getFullYear();
+    const range = sameMonth
+      ? `${m.toLocaleDateString('en-US',{month:'short',day:'numeric'})}–${e.toLocaleDateString('en-US',{day:'numeric'})}, ${e.getFullYear()}`
+      : `${m.toLocaleDateString('en-US',{month:'short',day:'numeric'})}–${e.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+    return `Week ${String(week).padStart(2,'0')} · ${range}`;
+  }
+  return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+}
+function periodKey(r){ return periodKeyForDate(dateObj(r)); }
+
+function refreshPeriods(){
+  const vals = [...new Set(DATA.map(periodKey))];
+  $('period').innerHTML = '<option value="">All '+$('grain').value+'s</option>' + vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
+}
+function syncPeriodControl(){
+  const isDay = $('grain').value==='day';
+  $('period').hidden = isDay;
+  $('calendarDate').hidden = !isDay;
+  $('periodLabel').textContent = isDay ? 'Choose date' : ($('grain').value==='week' ? 'Choose week' : 'Choose month');
+}
+refreshPeriods(); syncPeriodControl();
+
+function filtered(){
+  const q = $('search').value.toLowerCase().trim();
+  const sp = $('period').value;
+  return DATA.filter(r =>
+    (!exactCalendarDate || isoDate(dateObj(r))===exactCalendarDate) &&
+    (!sp || periodKey(r)===sp) &&
+    (!$('agent').value || r.agent===$('agent').value) &&
+    (!$('program').value || r.program===$('program').value) &&
+    (!$('attribution').value || r.mistake===$('attribution').value) &&
+    (!$('category').value || r.category===$('category').value) &&
+    (!focus || r[focus.key]===focus.value) &&
+    (!q || [r.issue,r.caseId,r.agent,r.category,r.program].join(' ').toLowerCase().includes(q))
+  );
+}
+
+function counts(rows, key){
+  return rows.reduce((a,r)=>(a[r[key]||'Unspecified']=(a[r[key]||'Unspecified']||0)+1,a),{});
+}
+
+function bars(id, obj, color, key){
+  const entries = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const max = Math.max(1, ...entries.map(x=>x[1]));
+  $(id).innerHTML = entries.length ? entries.map(([k,v]) => {
+    const col = typeof color === 'function' ? color(k) : (color || 'var(--brand)');
+    const active = focus && focus.key===key && focus.value===k ? ' active' : '';
+    return `<button class="chartbar${active}" data-key="${esc(key)}" data-value="${esc(k)}" title="Filter dashboard to ${esc(k)}">`
+      + `<span class="name">${esc(k)}</span>`
+      + `<span class="track"><span class="fill" style="width:${v/max*100}%;background:${col}"></span></span>`
+      + `<span class="count">${v}</span></button>`;
+  }).join('') : '<div class="empty">No records for this selection</div>';
+  $(id).querySelectorAll('.chartbar').forEach(b => b.onclick = () => {
+    focus = (focus && focus.key===b.dataset.key && focus.value===b.dataset.value) ? null : {key:b.dataset.key, value:b.dataset.value};
+    render();
+  });
+}
+
+/* Donut */
+function donut(rows){
+  const by = counts(rows, 'mistake');
+  const order = ['Human','Auditor','Product'].filter(k => by[k]);
+  const total = order.reduce((s,k) => s + by[k], 0);
+  const cx=60, cy=60, r=46, sw=16;
+  let acc = -Math.PI/2;
+  let svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#EEF2F6" stroke-width="${sw}"/>`;
+  if(total > 0){
+    order.forEach(k => {
+      const frac = by[k]/total;
+      if(frac <= 0) return;
+      const a2 = acc + frac * Math.PI * 2;
+      const large = frac > 0.5 ? 1 : 0;
+      const x1 = cx + r*Math.cos(acc), y1 = cy + r*Math.sin(acc);
+      const x2 = cx + r*Math.cos(a2),  y2 = cy + r*Math.sin(a2);
+      svg += `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}" fill="none" stroke="${ATTR_COLOR[k]}" stroke-width="${sw}" stroke-linecap="butt"/>`;
+      acc = a2;
+    });
+  }
+  svg += `<text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="20" font-weight="700" fill="currentColor">${total}</text>`;
+  svg += `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="9" fill="#64748B" letter-spacing="1" style="text-transform:uppercase">records</text>`;
+  $('donut').innerHTML = svg;
+
+  const legend = order.map(k => {
+    const active = focus && focus.key==='mistake' && focus.value===k ? ' active' : '';
+    const pct = total ? Math.round(by[k]/total*100) : 0;
+    return `<div class="row-l${active}" data-key="mistake" data-value="${esc(k)}">`
+      + `<span class="sw" style="background:${ATTR_COLOR[k]}"></span>`
+      + `<span>${esc(k)}</span><span class="pct">${pct}%</span><span class="n">${by[k]}</span></div>`;
+  }).join('') || '<div class="empty">No records</div>';
+  $('attributions').innerHTML = legend;
+  $('attributions').querySelectorAll('.row-l').forEach(el => el.onclick = () => {
+    focus = (focus && focus.key==='mistake' && focus.value===el.dataset.value) ? null : {key:'mistake', value:el.dataset.value};
+    render();
+  });
+}
+
+/* Daily volume */
+function trend(rows){
+  const totalAudits = rows.length;
+  const totalRework = rows.filter(r => r.escalated === 'Yes').length;
+  const overallPct = totalAudits ? Math.round(totalRework/totalAudits*100) : 0;
+  $('trendStats').innerHTML =
+      `<span>Audits <b>${totalAudits}</b></span>`
+    + `<span>Sent to rework <b style="color:var(--rose)">${totalRework}</b></span>`
+    + `<span class="rate">Rework rate <b>${overallPct}%</b></span>`;
+
+  if(totalAudits === 0){ $('trend').innerHTML = '<div class="empty" style="margin:auto">No records in range</div>'; return; }
+
+  const buckets = {}; // iso -> { n, rework }
+  rows.forEach(r => {
+    const key = isoDate(dateObj(r));
+    if(!buckets[key]) buckets[key] = { n:0, rework:0 };
+    buckets[key].n += 1;
+    if(r.escalated === 'Yes') buckets[key].rework += 1;
+  });
+  const keys = Object.keys(buckets).sort();
+  const first = new Date(keys[0]+'T12:00:00'), last = new Date(keys[keys.length-1]+'T12:00:00');
+  const days = [];
+  for(let d = new Date(first); d <= last; d.setDate(d.getDate()+1)){
+    const k = isoDate(d);
+    const b = buckets[k] || { n:0, rework:0 };
+    days.push({
+      k,
+      label: new Date(k+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+      n: b.n,
+      rework: b.rework,
+      pct: b.n ? Math.round(b.rework/b.n*100) : 0
+    });
+  }
+  const max = Math.max(1, ...days.map(d=>d.n));
+  $('trend').innerHTML = days.map(d => {
+    const h = (d.n/max) * 100;
+    const reworkFrac = d.n ? (d.rework/d.n*100) : 0;
+    const okFrac = 100 - reworkFrac;
+    const tooltip = `${d.label} · ${d.n} audit${d.n===1?'':'s'}, ${d.rework} rework (${d.pct}%)`;
+    const label = d.n > 0 ? `<span class="pct">${d.pct}%</span>` : '';
+    return `<div class="col" title="${tooltip}">`
+         +   label
+         +   `<div class="stack" style="height:${h}%">`
+         +     (d.n ? `<div class="seg-ok" style="height:${okFrac}%"></div>` : '')
+         +     (d.rework ? `<div class="seg-rework" style="height:${reworkFrac}%"></div>` : '')
+         +   `</div>`
+         +   `<div class="lab">${d.label}</div>`
+         + `</div>`;
+  }).join('');
+}
+
+/* KPIs */
+function kpis(rows){
+  const total = rows.length;
+  const human = rows.filter(r=>r.mistake==='Human').length;
+  const agents = new Set(rows.map(r=>r.agent)).size;
+  const escal = rows.filter(r=>r.escalated==='Yes').length;
+  const pct = n => total ? Math.round(n/total*100) : 0;
+  const tiles = [
+    {cls:'k1', label:'Logged records', value:total, sub:'In current selection'},
+    {cls:'k2', label:'Human-attributed', value:human, sub:`${pct(human)}% of records`},
+    {cls:'k3', label:'Agents involved', value:agents, sub:`avg ${agents ? (total/agents).toFixed(1) : 0} per agent`},
+    {cls:'k4', label:'Escalated', value:escal, sub:`${pct(escal)}% of records`},
+  ];
+  $('kpis').innerHTML = tiles.map(t =>
+    `<div class="kpi ${t.cls}"><span class="accent"></span><div class="label">${t.label}</div><div class="value">${t.value}</div><div class="sub">${t.sub}</div></div>`
+  ).join('');
+}
+
+function render(){
+  const rows = filtered();
+  const sel = focus ? `${focus.value} · ` : '';
+  const label = exactCalendarDate
+    ? new Date(exactCalendarDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    : ($('period').value || ('All ' + $('grain').value + 's'));
+  $('periodBadge').textContent = sel + label;
+
+  kpis(rows);
+  donut(rows);
+  bars('categories', counts(rows,'category'), 'var(--brand)', 'category');
+  bars('agents', counts(rows,'agent'), 'var(--violet)', 'agent');
+  const progList = uniq('program');
+  bars('programs', counts(rows,'program'), k => PROG_COLORS[progList.indexOf(k) % PROG_COLORS.length], 'program');
+
+  $('rowCount').textContent = ` (${rows.length})`;
+  $('tbody').innerHTML = rows.length ? rows.map(r =>
+    `<tr class="${esc(r.mistake)}">`
+    + `<td>${esc(r.callDate)}</td>`
+    + `<td>${esc(r.agent)}</td>`
+    + `<td>${esc(r.program)}</td>`
+    + `<td>${esc(r.category)}</td>`
+    + `<td class="issue">${esc(r.issue)}</td>`
+    + `<td><span class="attrib ${esc(r.mistake)}">${esc(r.mistake)}</span></td>`
+    + `<td><span class="pill ${r.escalated==='Yes'?'yes':r.escalated==='No'?'no':''}">${esc(r.escalated||'—')}</span></td>`
+    + `<td><a href="${esc(r.caseLink)}" target="_blank" rel="noopener">Open ↗</a></td>`
+    + `</tr>`).join('') : '<tr><td colspan="8" class="empty">No matching records</td></tr>';
+}
+
+fields.forEach(id => $(id).addEventListener('change', render));
+$('period').addEventListener('change', () => { exactCalendarDate=''; $('calendarDate').value=''; render(); });
+$('calendarDate').addEventListener('change', () => { exactCalendarDate = $('calendarDate').value || ''; render(); });
+$('grain').addEventListener('change', () => { exactCalendarDate=''; refreshPeriods(); $('period').value=''; $('calendarDate').value=''; syncPeriodControl(); render(); });
+$('search').addEventListener('input', render);
+$('reset').onclick = () => {
+  fields.forEach(id => $(id).value='');
+  focus = null; exactCalendarDate='';
+  $('period').value=''; $('grain').value='month'; $('calendarDate').value=''; $('search').value='';
+  refreshPeriods(); syncPeriodControl(); render();
+};
+let _downloads = null;
+(async () => { try { _downloads = await window.claude?.use?.('downloads'); } catch(e) {} if(!_downloads){ $('downloadHtml').style.display='none'; $('download').style.display='none'; } })();
+
+$('downloadHtml').onclick = async () => {
+  if(!_downloads) return;
+  const source = '<!doctype html>\n' + document.documentElement.outerHTML;
+  try { await _downloads.save({ filename:'human_audit_dashboard.html', data: source }); } catch(e) {}
+};
+$('download').onclick = async () => {
+  if(!_downloads) return;
+  const rows = filtered();
+  const cols = ['callDate','month','agent','caseId','caseLink','program','category','issue','escalated','mistake','resolved','notes'];
+  const csv = [cols.join(','), ...rows.map(r => cols.map(k => '"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))].join('\r\n');
+  try { await _downloads.save({ filename:'human_audit_filtered.csv', data: csv }); } catch(e) {}
+};
+render();
+</script>
