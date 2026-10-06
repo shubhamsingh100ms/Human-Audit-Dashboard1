@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{
   --bg:#F6F7F9; --panel:#FFFFFF; --ink:#0F172A; --ink2:#1F2937; --muted:#64748B;
@@ -118,8 +122,32 @@ tbody tr.Product{border-left-color:var(--violet)}
 td a{color:var(--brand-ink);text-decoration:none;font-weight:600}
 td a:hover{text-decoration:underline}
 .empty{text-align:center;padding:32px;color:var(--muted)}
+.rowdel{margin-left:6px;background:transparent;color:var(--rose);border:1px solid var(--line);border-radius:5px;width:22px;height:22px;line-height:1;font-size:14px;font-weight:700;cursor:pointer;vertical-align:middle;padding:0;transition:all .12s}
+.rowdel:hover{background:var(--rose);color:#fff;border-color:var(--rose)}
+.muted{color:var(--muted)}
 
 .foot{color:var(--muted);font-size:11px;margin:18px 2px 0;line-height:1.6}
+
+/* Add-record modal */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal[hidden]{display:none}
+.modal-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,100%);max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:15px}
+.xbtn{background:transparent;border:0;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 6px}
+.xbtn:hover{color:var(--ink)}
+.modal-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px}
+.modal-form .field{display:grid;gap:5px}
+.modal-form .field.full{grid-column:1/-1}
+.modal-form label{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.modal-form input,.modal-form select,.modal-form textarea{font:inherit;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:#fff;color:var(--ink);width:100%;transition:border-color .15s}
+.modal-form textarea{min-height:60px;resize:vertical;font-family:inherit}
+.modal-form input:focus,.modal-form select:focus,.modal-form textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(13,148,136,.14)}
+.modal-foot{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;align-items:center;padding-top:4px;border-top:1px solid var(--line);margin-top:4px;padding:14px 0 2px}
+.save-msg{margin-right:auto;font-size:12px;color:var(--muted)}
+.save-msg.ok{color:var(--emerald)}
+.save-msg.err{color:var(--rose)}
+@media(max-width:560px){.modal-form{grid-template-columns:1fr}}
 
 /* Dark-mode respecting but keep brand */
 @media (prefers-color-scheme: dark){
@@ -152,6 +180,7 @@ td a:hover{text-decoration:underline}
 }
 </style>
 <title>Human Audit Dashboard</title>
+</head><body>
 <main class="wrap">
 <header class="top">
   <div class="title-row">
@@ -160,9 +189,39 @@ td a:hover{text-decoration:underline}
   </div>
   <div class="header-actions">
     <span class="badge" id="periodBadge">All months</span>
+    <button class="btn" id="addRecord" type="button" style="display:none">+ Add record</button>
+    <button class="btn ghost" id="exportJson" type="button" style="display:none" title="Download merged dataset as JSON — paste into the DATA array in index.html to sync to GitHub">Export merged JSON</button>
     <button class="btn ghost" id="downloadHtml" type="button">Download HTML</button>
   </div>
 </header>
+
+<!-- Add record modal -->
+<div id="addModal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Add audit record</h3>
+      <button class="xbtn" id="closeAdd" type="button" aria-label="Close">×</button>
+    </div>
+    <form id="addForm" class="modal-form">
+      <div class="field"><label>Call date</label><input type="date" name="callDate" required></div>
+      <div class="field"><label>Agent</label><input type="text" name="agent" list="agentList" required placeholder="Agent name"></div>
+      <datalist id="agentList"></datalist>
+      <div class="field"><label>Program</label><select name="program" required><option value="">Select…</option><option>J&amp;J Neuroscience</option><option>J&amp;J Immunology</option><option>Sandoz</option><option>Lundbeck</option><option>Ipsen</option></select></div>
+      <div class="field"><label>Category</label><select name="category" required><option value="">Select…</option><option>PA/Per-D missed info</option><option>Specialty pharmacy</option><option>Coverage</option><option>OOPM Confirmation</option><option>Documentation Error</option><option>Step therapy</option><option>Wrong Disposition</option><option>AFP/Max/Acc</option><option>No error</option></select></div>
+      <div class="field"><label>Attribution</label><select name="mistake" required><option>Human</option><option>Auditor</option><option>Product</option></select></div>
+      <div class="field"><label>Escalated</label><select name="escalated" required><option>Yes</option><option>No</option><option>N/A</option></select></div>
+      <div class="field full"><label>Issue description</label><textarea name="issue" rows="3" required placeholder="What was missed / incorrect"></textarea></div>
+      <div class="field"><label>Case ID</label><input name="caseId" placeholder="e.g. 6abd0b38…"></div>
+      <div class="field"><label>Case link</label><input name="caseLink" type="url" placeholder="https://dash.100ms.ai/…"></div>
+      <div class="field full"><label>Notes (optional)</label><input name="notes"></div>
+      <div class="modal-foot">
+        <span class="save-msg" id="saveMsg"></span>
+        <button type="button" class="btn ghost" id="cancelAdd">Cancel</button>
+        <button type="submit" class="btn" id="saveAdd">Save record</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <section class="filters">
   <div class="field"><label for="grain">Date view</label>
@@ -226,7 +285,9 @@ td a:hover{text-decoration:underline}
 </main>
 <script>
 window.DATA=[{"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Intiyaj", "caseId": "6abaade3dbaaa28c1346ba41", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaade3dbaaa28c1346ba41", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Entered Pre-D details in PA.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Trilok Srinivas", "caseId": "6abaccacdbaaa28c1347c5e8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaccacdbaaa28c1347c5e8", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Pre-D name was not asked.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Megha Rai", "caseId": "6abab555dbaaa28c1346fc9f", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abab555dbaaa28c1346fc9f", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Mohammed Zeeshan Rathod", "caseId": "6abaab29dbaaa28c1346a05c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abaab29dbaaa28c1346a05c", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Pavan Kumar Kalasu", "caseId": "6abbaebece34a19dbe710548", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbaebece34a19dbe710548", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "Missed to take PA submission method", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Manoj G", "caseId": "6ababf21dbaaa28c1347569d", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ababf21dbaaa28c1347569d", "program": "J&J Immunology", "category": "Wrong Disposition", "issue": "Could have marked Benefits already released as dispo, for auto approved.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Mohammed Zeeshan Rathod", "caseId": "6abab442dbaaa28c1346f2eb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abab442dbaaa28c1346f2eb", "program": "J&J Neuroscience", "category": "Documentation Error", "issue": "The data was not properly entered or saved, resulting in missing information.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Pavan Kumar Kalasu", "caseId": "6abbb9b23790c3b70181145d", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbb9b23790c3b70181145d", "program": "J&J Immunology", "category": "Step therapy", "issue": "Missed to confirm the conflicting info for PA on file status", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abbb1bbce34a19dbe7114ab", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbb1bbce34a19dbe7114ab", "program": "J&J Neuroscience", "category": "Specialty pharmacy", "issue": "Missed to get info on B&B, SP and PA due to SLA risk, but sent case back to get full info.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Thejashwini R", "caseId": "6abbc659ce34a19dbe71aed3", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abbc659ce34a19dbe71aed3", "program": "J&J Immunology", "category": "Step therapy", "issue": "Missed to ask Step Therapy", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 29, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abba9b3ce34a19dbe70f366", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abba9b3ce34a19dbe70f366", "program": "J&J Immunology", "category": "Coverage", "issue": "J1745 is not covered; this was not asked. Reason for Non-Coverage", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Christopher Samson", "caseId": "6abbfcb63790c3b70183352c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbfcb63790c3b70183352c", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Pre-D name and fax number not confirmed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Intiyaj", "caseId": "6abbf81b3790c3b701831162", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abbf81b3790c3b701831162", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "TAT was Missed to ask.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Anushiya S", "caseId": "6abd0b38ce34a19dbe765d21", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6abd0b38ce34a19dbe765d21", "program": "Sandoz", "category": "Coverage", "issue": "Missed coverage-determination for CPT", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Anushiya S", "caseId": "6abd0f063790c3b701867710", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd0f063790c3b701867710", "program": "J&J Neuroscience", "category": "Coverage", "issue": "Missed coverage-determination", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Christopher Samson", "caseId": "6abc1d163790c3b701844fcc", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abc1d163790c3b701844fcc", "program": "J&J Neuroscience", "category": "Documentation Error", "issue": "Documentation Error", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Sep 30, 2026", "month": "Sep-2026", "agent": "Junaid R", "caseId": "6abd20153790c3b70186f9a2", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd20153790c3b70186f9a2", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "TAT was Missed to ask.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Sanjay S Kumar", "caseId": "6abd6c86ce34a19dbe792a67", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abd6c86ce34a19dbe792a67", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D for the J code", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Santhosh S", "caseId": "6abe52d86e4fc9df1cbc94f9", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abe52d86e4fc9df1cbc94f9", "program": "J&J Neuroscience", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D for the J code", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Christopher Samson", "caseId": "6abe58e86e4fc9df1cbcb58a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abe58e86e4fc9df1cbcb58a", "program": "J&J Neuroscience", "category": "Coverage", "issue": "Confirmed worng benfits over the call, later obtanied the correct benfits", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Nirmal Kandhesh B", "caseId": "6abe57526e4fc9df1cbcaceb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abe57526e4fc9df1cbcaceb", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 1, 2026", "month": "Oct-2026", "agent": "Sumit Chetry", "caseId": "6abe80326e4fc9df1cbdfaa8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-697348961ab5e97a33f32776/cases/6abe80326e4fc9df1cbdfaa8", "program": "Ipsen", "category": "PA/Per-D missed info", "issue": "Missed to check PA/Per-D Quantity Used", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Intiyaj", "caseId": "6abeab546e4fc9df1cbf38ef", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abeab546e4fc9df1cbf38ef", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Banupriya Rajan", "caseId": "6abec8886e4fc9df1cc0007a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abec8886e4fc9df1cc0007a", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "Missed to check specialty pharmacy info", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Keerthana K", "caseId": "6abf0c306e4fc9df1cc0a6f4", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6abf0c306e4fc9df1cc0a6f4", "program": "J&J Immunology", "category": "No error", "issue": "In the 1st human call rep confirmed they can use any US, can be close with this info", "escalated": "No", "mistake": "Auditor", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Rakhesh Rohidas Pal", "caseId": "6abed7206e4fc9df1cc04f80", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abed7206e4fc9df1cc04f80", "program": "J&J Neuroscience", "category": "No error", "issue": "Agent asked about the Step-Therapy", "escalated": "N/A", "mistake": "Product", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Keerthana K", "caseId": "6abfa60c13f0dde7ac185b95", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abfa60c13f0dde7ac185b95", "program": "J&J Neuroscience", "category": "No error", "issue": "Auditor misheard the call, which led to case sent back to agent", "escalated": "No", "mistake": "Auditor", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Jyoti Sharma", "caseId": "6ac00b7013f0dde7ac1b2f69", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac00b7013f0dde7ac1b2f69", "program": "J&J Immunology", "category": "OOPM Confirmation", "issue": "OOPM Confirmation missed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 2, 2026", "month": "Oct-2026", "agent": "Abdul Shahid", "caseId": "6abfe56213f0dde7ac1a1ac3", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6abfe56213f0dde7ac1a1ac3", "program": "Sandoz", "category": "PA/Per-D missed info", "issue": "Auth eff date discrepancy", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sanjay S Kumar", "caseId": "6ac01c4d13f0dde7ac1baa60", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac01c4d13f0dde7ac1baa60", "program": "J&J Immunology", "category": "Coverage", "issue": "Incorrect benfits was taken \"infusion\".", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Srinivasan Baskaran", "caseId": "6ac0268613f0dde7ac1bde68", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac0268613f0dde7ac1bde68", "program": "Sandoz", "category": "AFP/Max/Acc", "issue": "Alternate-funding question was never asked", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Anushiya S", "caseId": "6ac3b629c1611d0d21aa0f1a", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac3b629c1611d0d21aa0f1a", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "PA/Per-D Information missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Junaid R", "caseId": "6ac3a952c1611d0d21a9ad00", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac3a952c1611d0d21a9ad00", "program": "Sandoz", "category": "PA/Per-D missed info", "issue": "PA name and phone number missing", "escalated": "N/A", "mistake": "Product", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sudharshan S", "caseId": "6ac0242f13f0dde7ac1bd34c", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac0242f13f0dde7ac1bd34c", "program": "J&J Immunology", "category": "PA/Per-D missed info", "issue": "PA/Per-D Information missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Banupriya Rajan", "caseId": "6abffe9013f0dde7ac1acedb", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69e61717ce4fd8fdd3caa302/cases/6abffe9013f0dde7ac1acedb", "program": "J&J Neuroscience", "category": "OOPM Confirmation", "issue": "OOPM Confirmation missed", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Sudharshan S", "caseId": "6ac3b6d7c1611d0d21aa14d8", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-69fcaf190d966c42c8214fad/cases/6ac3b6d7c1611d0d21aa14d8", "program": "Sandoz", "category": "OOPM Confirmation", "issue": "Agent didnt give codes, insted asked as \"covered 100%\" for the service , hence escalate to audit.", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}, {"callDate": "Oct 3, 2026", "month": "Oct-2026", "agent": "Anushiya S", "caseId": "6ac3d4d3c1611d0d21aaf6ac", "caseLink": "https://dash.100ms.ai/org-68a0732edbe070ddd4e5ca2c/prog-6a0ae34eb3b5d12ed4aaa702/cases/6ac3d4d3c1611d0d21aaf6ac", "program": "J&J Immunology", "category": "Specialty pharmacy", "issue": "SP Number is missing", "escalated": "Yes", "mistake": "Human", "resolved": "", "notes": ""}];
-const DATA = window.DATA;
+const SEED = window.DATA;
+let LIVE = [];                          // records added via the modal, synced from db
+function allRows(){ return SEED.concat(LIVE); }
 const $ = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fields = ['agent','program','attribution','category'];
@@ -234,7 +295,7 @@ const ATTR_COLOR = { Human:'#BE123C', Auditor:'#D97706', Product:'#6D28D9' };
 const PROG_COLORS = ['#0D9488','#047857','#2563EB','#9333EA','#EA580C'];
 let focus = null, exactCalendarDate = '';
 
-function uniq(k){ return [...new Set(DATA.map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function uniq(k){ return [...new Set(allRows().map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function options(id, values, label){
   $(id).innerHTML = '<option value="">'+label+'</option>'+values.map(v=>'<option>'+esc(v)+'</option>').join('');
 }
@@ -265,7 +326,7 @@ function periodKeyForDate(d){
 function periodKey(r){ return periodKeyForDate(dateObj(r)); }
 
 function refreshPeriods(){
-  const vals = [...new Set(DATA.map(periodKey))];
+  const vals = [...new Set(allRows().map(periodKey))];
   $('period').innerHTML = '<option value="">All '+$('grain').value+'s</option>' + vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
 }
 function syncPeriodControl(){
@@ -279,7 +340,7 @@ refreshPeriods(); syncPeriodControl();
 function filtered(){
   const q = $('search').value.toLowerCase().trim();
   const sp = $('period').value;
-  return DATA.filter(r =>
+  return allRows().filter(r =>
     (!exactCalendarDate || isoDate(dateObj(r))===exactCalendarDate) &&
     (!sp || periodKey(r)===sp) &&
     (!$('agent').value || r.agent===$('agent').value) &&
@@ -444,7 +505,10 @@ function render(){
     + `<td class="issue">${esc(r.issue)}</td>`
     + `<td><span class="attrib ${esc(r.mistake)}">${esc(r.mistake)}</span></td>`
     + `<td><span class="pill ${r.escalated==='Yes'?'yes':r.escalated==='No'?'no':''}">${esc(r.escalated||'—')}</span></td>`
-    + `<td><a href="${esc(r.caseLink)}" target="_blank" rel="noopener">Open ↗</a></td>`
+    + `<td>`
+    +   (r.caseLink ? `<a href="${esc(r.caseLink)}" target="_blank" rel="noopener">Open ↗</a>` : '<span class="muted">—</span>')
+    +   (r._id ? ` <button class="rowdel" data-id="${esc(r._id)}" title="Delete this record" aria-label="Delete record">×</button>` : '')
+    + `</td>`
     + `</tr>`).join('') : '<tr><td colspan="8" class="empty">No matching records</td></tr>';
 }
 
@@ -475,4 +539,153 @@ $('download').onclick = async () => {
   try { await _downloads.save({ filename:'human_audit_filtered.csv', data: csv }); } catch(e) {}
 };
 render();
+
+/* ===== Live Add Record (uses the `db` capability on claude.ai artifacts) ===== */
+function refreshOptionsAll(){
+  const curAgent = $('agent').value, curProg = $('program').value, curCat = $('category').value, curAttr = $('attribution').value;
+  options('agent', uniq('agent'), 'All agents');
+  options('program', uniq('program'), 'All programs');
+  options('category', uniq('category'), 'All categories');
+  options('attribution', uniq('mistake'), 'All types');
+  $('agent').value = curAgent; $('program').value = curProg; $('category').value = curCat; $('attribution').value = curAttr;
+  // datalist for the Add form
+  const dl = document.getElementById('agentList');
+  if(dl) dl.innerHTML = uniq('agent').map(a => `<option value="${esc(a)}">`).join('');
+  refreshPeriods();
+}
+refreshOptionsAll();
+
+const addBtn = document.getElementById('addRecord');
+const modal = document.getElementById('addModal');
+const form = document.getElementById('addForm');
+const saveMsg = document.getElementById('saveMsg');
+function openModal(){
+  modal.hidden = false;
+  // default date = today
+  const d = new Date(); const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  form.callDate.value = iso;
+  saveMsg.textContent = ''; saveMsg.className = 'save-msg';
+}
+function closeModal(){ modal.hidden = true; form.reset(); }
+addBtn.addEventListener('click', openModal);
+document.getElementById('closeAdd').addEventListener('click', closeModal);
+document.getElementById('cancelAdd').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+
+let _db = null, _unsub = null;
+let MODE = 'none';   // 'db' (claude.ai artifact) | 'local' (GitHub Pages / standalone)
+const LS_KEY = 'audit_records_local_v1';
+
+function loadLocal(){
+  try { LIVE = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+  catch(e) { LIVE = []; }
+}
+function saveLocal(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(LIVE)); } catch(e) {}
+}
+
+(async () => {
+  try { _db = await window.claude?.use?.('db'); } catch(e) {}
+  if(_db){
+    MODE = 'db';
+    addBtn.style.display = '';
+    try {
+      _unsub = _db.collection('records').onSnapshot(snap => {
+        LIVE = (snap.docs || []).map(d => {
+          const body = d.data(); if(!body) return null;
+          return Object.assign({}, body, { _id: d.id });
+        }).filter(Boolean);
+        refreshOptionsAll();
+        render();
+      });
+    } catch(e) { console.warn('db subscribe failed', e); }
+    return;
+  }
+  // Fallback: localStorage (works on GitHub Pages, file://, any static host)
+  MODE = 'local';
+  addBtn.style.display = '';
+  document.getElementById('exportJson').style.display = '';
+  loadLocal();
+  refreshOptionsAll();
+  render();
+})();
+
+function toRecordFromForm(f){
+  const iso = f.callDate.value; // YYYY-MM-DD
+  const d = new Date(iso + 'T12:00:00');
+  const callDate = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); // "Oct 7, 2026"
+  const month = d.toLocaleDateString('en-US',{month:'short'}) + '-' + d.getFullYear();
+  return {
+    callDate, month,
+    agent: f.agent.value.trim(),
+    program: f.program.value,
+    category: f.category.value,
+    issue: f.issue.value.trim(),
+    mistake: f.mistake.value,
+    escalated: f.escalated.value,
+    caseId: f.caseId.value.trim(),
+    caseLink: f.caseLink.value.trim(),
+    resolved: '',
+    notes: f.notes.value.trim(),
+    createdAt: Date.now()
+  };
+}
+
+/* Delete handler for live records */
+document.getElementById('tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.rowdel'); if(!btn) return;
+  const id = btn.getAttribute('data-id'); if(!id) return;
+  if(!confirm('Delete this record? This cannot be undone.')) return;
+  const prev = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+  if(MODE === 'db'){
+    try { await _db.doc('records/' + id).delete(); }
+    catch(err) {
+      btn.textContent = prev; btn.disabled = false;
+      alert('Delete failed: ' + (err?.code || err?.message || 'you may not have permission'));
+    }
+  } else if(MODE === 'local'){
+    LIVE = LIVE.filter(r => r._id !== id);
+    saveLocal(); refreshOptionsAll(); render();
+  }
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const rec = toRecordFromForm(form);
+  const id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+  saveMsg.textContent = 'Saving…'; saveMsg.className='save-msg';
+  if(MODE === 'db'){
+    try {
+      await _db.doc('records/' + id).set(rec);
+      saveMsg.textContent = 'Saved ✓ (shared with team)'; saveMsg.className='save-msg ok';
+      setTimeout(closeModal, 700);
+    } catch(err) {
+      saveMsg.textContent = 'Save failed: ' + (err?.code || err?.message || 'unknown');
+      saveMsg.className='save-msg err';
+    }
+  } else if(MODE === 'local'){
+    LIVE.push(Object.assign({}, rec, { _id: id }));
+    saveLocal();
+    refreshOptionsAll(); render();
+    saveMsg.textContent = 'Saved locally in this browser ✓'; saveMsg.className='save-msg ok';
+    setTimeout(closeModal, 700);
+  }
+});
+
+/* Export merged dataset as JSON — paste into DATA = [...] in index.html for a shared snapshot */
+document.getElementById('exportJson').addEventListener('click', () => {
+  const merged = SEED.concat(LIVE.map(r => {
+    const { _id, createdAt, ...rest } = r; return rest;
+  }));
+  const json = JSON.stringify(merged, null, 2);
+  try {
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'audit_records_merged.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch(e) { prompt('Copy this JSON and paste into index.html as DATA = …', json); }
+});
 </script>
+</body></html>
