@@ -289,6 +289,12 @@ td a:hover{text-decoration:underline}
 </main>
 <script>
 window.DATA=[];
+/* === SHARED GOOGLE SHEET (optional) ===
+   To make the sheet visible to every viewer on GitHub Pages, paste your
+   "File → Share → Publish to web → CSV" URL between the quotes below and commit.
+   Everyone who opens the page will auto-fetch it; no setup on their side.      */
+window.SHEET_URL_DEFAULT = '';
+window.SHEET_INTERVAL_DEFAULT = 300;
 const SEED = window.DATA;
 let LIVE = [];                          // records added via the modal, synced from db
 let SHEET = [];                         // records fetched from a linked Google Sheet (CSV published-to-web)
@@ -952,18 +958,25 @@ function normalizeSheetUrl(u){
 
 function updateSheetStatus(){
   const el = document.getElementById('sheetStatus'); if(!el) return;
-  const url = localStorage.getItem(SHEET_URL_KEY) || '';
+  const url = activeSheetUrl();
   if(!url){ el.textContent = ''; return; }
-  const int = +(localStorage.getItem(SHEET_INT_KEY) || 300);
-  let txt = `Sheet linked · ${SHEET.length} row${SHEET.length===1?'':'s'}`;
+  const scope = localStorage.getItem(SHEET_URL_KEY) ? '(local)' : '(shared)';
+  let txt = `Sheet ${scope} · ${SHEET.length} row${SHEET.length===1?'':'s'}`;
   if(_sheetLastOK) txt += ` · updated ${_sheetLastOK.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
   if(_sheetLastErr) txt += ` · ⚠ ${_sheetLastErr}`;
-  txt += ` · refresh ${int}s`;
+  txt += ` · refresh ${activeSheetInterval()}s`;
   el.textContent = txt;
 }
 
+function activeSheetUrl(){
+  // personal override wins; otherwise the baked-in default visible to every viewer
+  return localStorage.getItem(SHEET_URL_KEY) || (window.SHEET_URL_DEFAULT || '');
+}
+function activeSheetInterval(){
+  return Math.max(30, +(localStorage.getItem(SHEET_INT_KEY) || window.SHEET_INTERVAL_DEFAULT || 300));
+}
 async function refreshSheet(){
-  const url = localStorage.getItem(SHEET_URL_KEY);
+  const url = activeSheetUrl();
   if(!url){ SHEET = []; updateSheetStatus(); render(); return; }
   try {
     const res = await fetch(url, { cache:'no-store' });
@@ -984,10 +997,8 @@ async function refreshSheet(){
 
 function startSheetTimer(){
   if(_sheetTimer){ clearInterval(_sheetTimer); _sheetTimer = null; }
-  const url = localStorage.getItem(SHEET_URL_KEY);
-  if(!url) return;
-  const sec = Math.max(30, +(localStorage.getItem(SHEET_INT_KEY) || 300));
-  _sheetTimer = setInterval(refreshSheet, sec*1000);
+  if(!activeSheetUrl()) return;
+  _sheetTimer = setInterval(refreshSheet, activeSheetInterval()*1000);
 }
 
 document.getElementById('linkSheet').addEventListener('click', () => {
@@ -1027,8 +1038,8 @@ document.getElementById('linkSheet').addEventListener('click', () => {
   });
 });
 
-// Initial sheet load (if previously linked)
-if(localStorage.getItem(SHEET_URL_KEY)){
+// Initial sheet load — fires for everyone if a baked-in default URL is set, or for you if you linked one locally
+if(activeSheetUrl()){
   refreshSheet().then(startSheetTimer);
 }
 
