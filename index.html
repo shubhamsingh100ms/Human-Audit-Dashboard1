@@ -194,6 +194,8 @@ td a:hover{text-decoration:underline}
     <input type="file" id="importInput" accept=".csv,.tsv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
     <button class="btn ghost" id="exportJson" type="button" style="display:none" title="Download merged dataset as JSON — paste into the DATA array in index.html to sync to GitHub">Export merged JSON</button>
     <button class="btn ghost" id="clearLocal" type="button" style="display:none" title="Delete all records saved in this browser">Clear local records</button>
+    <button class="btn ghost" id="linkSheet" type="button" title="Link a Google Sheet (published-to-web CSV) that auto-refreshes into the dashboard">Link Google Sheet</button>
+    <span id="sheetStatus" class="muted" style="font-size:11px"></span>
     <button class="btn ghost" id="downloadHtml" type="button">Download HTML</button>
   </div>
 </header>
@@ -289,7 +291,8 @@ td a:hover{text-decoration:underline}
 window.DATA=[];
 const SEED = window.DATA;
 let LIVE = [];                          // records added via the modal, synced from db
-function allRows(){ return SEED.concat(LIVE); }
+let SHEET = [];                         // records fetched from a linked Google Sheet (CSV published-to-web)
+function allRows(){ return SEED.concat(LIVE).concat(SHEET); }
 const $ = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fields = ['agent','program','attribution','category'];
@@ -717,23 +720,39 @@ function parseCSV(text){
   if(val.length || cur.length){ cur.push(val); rows.push(cur); }
   return rows.filter(r => r.some(x => String(x||'').trim() !== ''));
 }
+const _MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const _fmt = (y,m,d) => `${_MON[m]} ${d}, ${y}`;
 function toDisplayDate(v){
-  if(!v) return '';
-  if(v instanceof Date) return v.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  // Excel serial numbers (SheetJS gives Date objects when cellDates:true; fallback below)
+  if(!v && v !== 0) return '';
+  // SheetJS with cellDates:true gives Date objects representing the Excel day — use LOCAL parts,
+  // which match the day Excel shows regardless of the user's timezone.
+  if(v instanceof Date){
+    return _fmt(v.getFullYear(), v.getMonth(), v.getDate());
+  }
+  // Excel serial number — do UTC math and read UTC parts (no TZ shift)
   if(typeof v === 'number'){
     const epoch = new Date(Date.UTC(1899,11,30));
-    const d = new Date(epoch.getTime() + v*86400000);
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const d = new Date(epoch.getTime() + Math.round(v)*86400000);
+    return _fmt(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
-  const s = String(v).trim();
+  let s = String(v).trim();
+  if(!s) return '';
+  // Bare ISO date (YYYY-M-D or YYYY/M/D) — treat as calendar day, no TZ math
+  const m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if(m) return _fmt(+m[1], +m[2]-1, +m[3]);
+  // DD/MM/YYYY or DD-MM-YYYY (common in India)
+  const m2 = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if(m2) return _fmt(+m2[3], +m2[2]-1, +m2[1]);
+  // Last resort — parse and read LOCAL parts (user is in IST)
   const d = new Date(s);
-  if(!isNaN(d)) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  if(!isNaN(d)) return _fmt(d.getFullYear(), d.getMonth(), d.getDate());
   return s;
 }
 function monthOf(displayDate){
+  // "Sep 29, 2026" → local midnight parse is fine; getMonth/Year are local and stable
   const d = new Date(displayDate);
-  return isNaN(d) ? '' : (d.toLocaleDateString('en-US',{month:'short'}) + '-' + d.getFullYear());
+  if(isNaN(d)) return '';
+  return d.toLocaleDateString('en-US',{month:'short'}) + '-' + d.getFullYear();
 }
 function normalizeAttribution(v){
   const s = String(v||'').trim().toLowerCase();
@@ -750,25 +769,38 @@ function normalizeEscalated(v){
   return v ? String(v) : 'Yes';
 }
 function rowsToRecords(rowArrs){
-  if(rowArrs.length < 2) return { records:[], errors:['File has no data rows'] };
+  if(rowArrs.length < 2) return { records:[], errors:[], skipped:[] };
   const headers = rowArrs[0];
   const map = headerMap(headers);
-  const required = ['callDate','agent','program','issue'];
+  const required = ['callDate','agent','issue'];      // program is nice to have, not required
   const missing = required.filter(k => !(k in map));
-  if(missing.length) return { records:[], errors:['Missing required columns: ' + missing.join(', ')] };
-  const recs = []; const errors = [];
+  if(missing.length) return { records:[], errors:['Missing required columns: ' + missing.join(', ')], skipped:[] };
+  const recs = []; const errors = []; const skipped = [];
   for(let i=1; i<rowArrs.length; i++){
-    const r = rowArrs[i];
+    const r = rowArrs[i] || [];
+    // Skip rows that are entirely empty — common for Excel exports with trailing blank rows
+    if(!r.some(c => String(c==null?'':c).trim() !== '')) continue;
     const get = k => (k in map) ? r[map[k]] : '';
     const callDate = toDisplayDate(get('callDate'));
-    if(!callDate) { errors.push('Row '+(i+1)+': missing/invalid Call Date'); continue; }
-    const rec = {
+    const agent = String(get('agent')||'').trim();
+    const issue = String(get('issue')||'').trim();
+    const reasons = [];
+    if(!callDate) reasons.push('missing/invalid Call Date');
+    if(!agent) reasons.push('missing Agent');
+    if(!issue) reasons.push('missing Issue');
+    if(reasons.length){
+      const snippet = r.slice(0,8).map(c => String(c==null?'':c)).join(' | ');
+      errors.push('Row '+(i+1)+': ' + reasons.join(', '));
+      skipped.push({ row:i+1, reasons:reasons.join(', '), raw:snippet, cells:r });
+      continue;
+    }
+    recs.push({
       callDate,
       month: monthOf(callDate),
-      agent: String(get('agent')||'').trim(),
+      agent,
       program: String(get('program')||'').trim(),
       category: String(get('category')||'').trim(),
-      issue: String(get('issue')||'').trim(),
+      issue,
       mistake: normalizeAttribution(get('mistake')),
       escalated: normalizeEscalated(get('escalated')),
       caseId: String(get('caseId')||'').trim(),
@@ -776,11 +808,23 @@ function rowsToRecords(rowArrs){
       resolved: '',
       notes: String(get('notes')||'').trim(),
       createdAt: Date.now()
-    };
-    if(!rec.agent || !rec.issue){ errors.push('Row '+(i+1)+': missing Agent or Issue'); continue; }
-    recs.push(rec);
+    });
   }
-  return { records:recs, errors };
+  return { records:recs, errors, skipped };
+}
+
+// Build and download a CSV of skipped rows so the user can fix the source
+function downloadSkippedCSV(skipped, origHeaders){
+  const header = ['Row #','Skip reason', ...origHeaders.map(h => String(h||''))];
+  const esc = v => { const s = String(v==null?'':v); return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const lines = [header.map(esc).join(',')];
+  skipped.forEach(s => lines.push([s.row, s.reasons, ...s.cells.map(esc)].map(esc).join(',')));
+  const csv = lines.join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'import_skipped_rows.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 // Lazy-load SheetJS from CDN (works on GitHub Pages; blocked on claude.ai artifacts — we fall back to CSV)
@@ -832,8 +876,14 @@ document.getElementById('importInput').addEventListener('change', async (e) => {
   let rows;
   try { rows = await readFileAsRows(file); }
   catch(err){ alert('Import failed: ' + (err?.message || err)); return; }
-  const { records: parsed, errors } = rowsToRecords(rows);
-  if(!parsed.length){ alert('No records imported.\n\n' + errors.slice(0,5).join('\n')); return; }
+  const { records: parsed, errors, skipped } = rowsToRecords(rows);
+  if(!parsed.length){
+    const msg = 'No records imported.\n\n' + errors.slice(0,10).join('\n') + (errors.length>10?`\n…and ${errors.length-10} more`:'');
+    if(skipped && skipped.length && confirm(msg + '\n\nDownload a CSV of the skipped rows to see what went wrong?')){
+      downloadSkippedCSV(skipped, rows[0] || []);
+    } else { alert(msg); }
+    return;
+  }
 
   // Deduplicate against what's already in the dashboard
   const keyOf = r => {
@@ -857,8 +907,11 @@ document.getElementById('importInput').addEventListener('change', async (e) => {
   }
   const parts = [`Import ${records.length} new record${records.length===1?'':'s'} from ${file.name}?`];
   if(dupes.length) parts.push(`${dupes.length} duplicate${dupes.length===1?'':'s'} will be skipped (already in dashboard)`);
-  if(errors.length) parts.push(`${errors.length} row${errors.length===1?'':'s'} will be skipped (bad data)`);
-  if(!confirm(parts.join('\n'))) return;
+  if(errors.length) parts.push(`${errors.length} row${errors.length===1?'':'s'} will be skipped (missing data) — press Cancel to download a report of the skipped rows first`);
+  if(!confirm(parts.join('\n'))){
+    if(errors.length && confirm('Download a CSV of the skipped rows?')) downloadSkippedCSV(skipped, rows[0] || []);
+    return;
+  }
 
   if(MODE === 'db'){
     let ok = 0, fail = 0;
@@ -877,6 +930,107 @@ document.getElementById('importInput').addEventListener('change', async (e) => {
     alert(`Imported ${records.length} new record${records.length===1?'':'s'} locally` + (dupes.length?`\n${dupes.length} duplicate${dupes.length===1?'':'s'} skipped`:'') + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped (bad data)`:'') + '\n\nUse "Export merged JSON" to sync to GitHub.');
   }
 });
+
+/* ========= Linked Google Sheet ========= */
+const SHEET_URL_KEY = 'audit_sheet_url_v1';
+const SHEET_INT_KEY = 'audit_sheet_interval_v1';
+let _sheetTimer = null, _sheetLastOK = null, _sheetLastErr = null;
+
+function normalizeSheetUrl(u){
+  if(!u) return '';
+  u = u.trim();
+  // Already a published-CSV URL (…/pub?output=csv or ../export?format=csv)
+  if(/output=csv|format=csv/i.test(u)) return u;
+  // /spreadsheets/d/<id>/edit#gid=<gid>  → export as CSV for that gid
+  const m = u.match(/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(m){
+    const gid = (u.match(/[#?&]gid=(\d+)/) || [])[1] || '0';
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
+  }
+  return u;
+}
+
+function updateSheetStatus(){
+  const el = document.getElementById('sheetStatus'); if(!el) return;
+  const url = localStorage.getItem(SHEET_URL_KEY) || '';
+  if(!url){ el.textContent = ''; return; }
+  const int = +(localStorage.getItem(SHEET_INT_KEY) || 300);
+  let txt = `Sheet linked · ${SHEET.length} row${SHEET.length===1?'':'s'}`;
+  if(_sheetLastOK) txt += ` · updated ${_sheetLastOK.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+  if(_sheetLastErr) txt += ` · ⚠ ${_sheetLastErr}`;
+  txt += ` · refresh ${int}s`;
+  el.textContent = txt;
+}
+
+async function refreshSheet(){
+  const url = localStorage.getItem(SHEET_URL_KEY);
+  if(!url){ SHEET = []; updateSheetStatus(); render(); return; }
+  try {
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const { records } = rowsToRecords(rows);
+    SHEET = records;
+    _sheetLastOK = new Date();
+    _sheetLastErr = null;
+  } catch(e){
+    _sheetLastErr = (e && e.message) || 'fetch failed';
+  }
+  updateSheetStatus();
+  refreshOptionsAll();
+  render();
+}
+
+function startSheetTimer(){
+  if(_sheetTimer){ clearInterval(_sheetTimer); _sheetTimer = null; }
+  const url = localStorage.getItem(SHEET_URL_KEY);
+  if(!url) return;
+  const sec = Math.max(30, +(localStorage.getItem(SHEET_INT_KEY) || 300));
+  _sheetTimer = setInterval(refreshSheet, sec*1000);
+}
+
+document.getElementById('linkSheet').addEventListener('click', () => {
+  const current = localStorage.getItem(SHEET_URL_KEY) || '';
+  const url = prompt(
+    'Paste the Google Sheet URL.\n\n' +
+    'Either (a) the normal edit URL (I will fetch the first tab as CSV),\n' +
+    'or (b) a "File → Share → Publish to web → CSV" URL.\n\n' +
+    'Note: the sheet must be either Published to Web, or shared as "Anyone with the link can view".\n\n' +
+    'Leave blank and click OK to unlink.',
+    current
+  );
+  if(url === null) return;      // cancelled
+  const u = normalizeSheetUrl(url);
+  if(!u){
+    localStorage.removeItem(SHEET_URL_KEY);
+    SHEET = []; _sheetLastOK = null; _sheetLastErr = null;
+    if(_sheetTimer){ clearInterval(_sheetTimer); _sheetTimer = null; }
+    updateSheetStatus(); refreshOptionsAll(); render();
+    alert('Google Sheet unlinked.');
+    return;
+  }
+  const intStr = prompt('Refresh every how many seconds? (minimum 30, default 300 = 5 min)', localStorage.getItem(SHEET_INT_KEY) || '300');
+  if(intStr === null) return;
+  const sec = Math.max(30, parseInt(intStr,10) || 300);
+  localStorage.setItem(SHEET_URL_KEY, u);
+  localStorage.setItem(SHEET_INT_KEY, String(sec));
+  refreshSheet().then(() => {
+    startSheetTimer();
+    if(_sheetLastErr){
+      alert('Linked, but the first fetch failed: ' + _sheetLastErr +
+            '\n\nMake sure the sheet is Published to the web (File → Share → Publish to web → CSV),\n' +
+            'or that "Anyone with the link can view" is enabled.');
+    } else {
+      alert('Google Sheet linked. ' + SHEET.length + ' row(s) loaded. Auto-refresh every ' + sec + 's.');
+    }
+  });
+});
+
+// Initial sheet load (if previously linked)
+if(localStorage.getItem(SHEET_URL_KEY)){
+  refreshSheet().then(startSheetTimer);
+}
 
 /* Clear local records (only shown in local/GitHub mode) */
 document.getElementById('clearLocal').addEventListener('click', () => {
