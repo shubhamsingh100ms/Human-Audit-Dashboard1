@@ -190,6 +190,8 @@ td a:hover{text-decoration:underline}
   <div class="header-actions">
     <span class="badge" id="periodBadge">All months</span>
     <button class="btn" id="addRecord" type="button" style="display:none">+ Add record</button>
+    <button class="btn ghost" id="importFile" type="button" style="display:none" title="Import audit records from Excel (.xlsx) or CSV">Import file</button>
+    <input type="file" id="importInput" accept=".csv,.tsv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
     <button class="btn ghost" id="exportJson" type="button" style="display:none" title="Download merged dataset as JSON — paste into the DATA array in index.html to sync to GitHub">Export merged JSON</button>
     <button class="btn ghost" id="downloadHtml" type="button">Download HTML</button>
   </div>
@@ -204,12 +206,11 @@ td a:hover{text-decoration:underline}
     </div>
     <form id="addForm" class="modal-form">
       <div class="field"><label>Call date</label><input type="date" name="callDate" required></div>
-      <div class="field"><label>Agent</label><input type="text" name="agent" list="agentList" required placeholder="Agent name"></div>
-      <datalist id="agentList"></datalist>
+      <div class="field"><label>Agent</label><select name="agent" required><option value="">Select agent…</option><option>Junaid R</option><option>Sudharshan. S</option><option>TRILOK SRINIVAS</option><option>SANTHOSH S</option><option>Intiyaj Sharif</option><option>Manoj G</option><option>Rakhesh Rohidas Pal</option><option>Ajuba Yelmo</option><option>Megha Rai</option><option>Sneha PN</option><option>B Riyaz ur Rehman</option><option>Srinivasan Baskaran</option><option>Christopher Samson</option><option>Nirmal Kandhesh B</option><option>Hariharan Rajapandian</option><option>Pooja Y</option><option>Anushiya S</option><option>Sumit Chetri</option><option>Sanjay S Kumar</option><option>Bhanupriya</option><option>Abdul</option></select></div>
       <div class="field"><label>Program</label><select name="program" required><option value="">Select…</option><option>J&amp;J Neuroscience</option><option>J&amp;J Immunology</option><option>Sandoz</option><option>Lundbeck</option><option>Ipsen</option></select></div>
       <div class="field"><label>Category</label><select name="category" required><option value="">Select…</option><option>PA/Per-D missed info</option><option>Specialty pharmacy</option><option>Coverage</option><option>OOPM Confirmation</option><option>Documentation Error</option><option>Step therapy</option><option>Wrong Disposition</option><option>AFP/Max/Acc</option><option>No error</option></select></div>
       <div class="field"><label>Attribution</label><select name="mistake" required><option>Human</option><option>Auditor</option><option>Product</option></select></div>
-      <div class="field"><label>Escalated</label><select name="escalated" required><option>Yes</option><option>No</option><option>N/A</option></select></div>
+      <div class="field"><label>Escalated correctly</label><select name="escalated" required><option>Yes</option><option>No</option><option>N/A</option></select></div>
       <div class="field full"><label>Issue description</label><textarea name="issue" rows="3" required placeholder="What was missed / incorrect"></textarea></div>
       <div class="field"><label>Case ID</label><input name="caseId" placeholder="e.g. 6abd0b38…"></div>
       <div class="field"><label>Case link</label><input name="caseLink" type="url" placeholder="https://dash.100ms.ai/…"></div>
@@ -275,7 +276,7 @@ td a:hover{text-decoration:underline}
   <div class="tableactions"><button class="btn" id="download" type="button">Download filtered CSV</button></div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th>Call date</th><th>Agent</th><th>Program</th><th>Category</th><th>Issue details</th><th>Attribution</th><th>Escalated</th><th>Case</th></tr></thead>
+      <thead><tr><th>Call date</th><th>Agent</th><th>Program</th><th>Category</th><th>Issue details</th><th>Attribution</th><th>Escalated correctly</th><th>Case</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
@@ -473,7 +474,7 @@ function kpis(rows){
     {cls:'k1', label:'Logged records', value:total, sub:'In current selection'},
     {cls:'k2', label:'Human-attributed', value:human, sub:`${pct(human)}% of records`},
     {cls:'k3', label:'Agents involved', value:agents, sub:`avg ${agents ? (total/agents).toFixed(1) : 0} per agent`},
-    {cls:'k4', label:'Escalated', value:escal, sub:`${pct(escal)}% of records`},
+    {cls:'k4', label:'Escalated correctly', value:escal, sub:`${pct(escal)}% of records`},
   ];
   $('kpis').innerHTML = tiles.map(t =>
     `<div class="kpi ${t.cls}"><span class="accent"></span><div class="label">${t.label}</div><div class="value">${t.value}</div><div class="sub">${t.sub}</div></div>`
@@ -548,9 +549,6 @@ function refreshOptionsAll(){
   options('category', uniq('category'), 'All categories');
   options('attribution', uniq('mistake'), 'All types');
   $('agent').value = curAgent; $('program').value = curProg; $('category').value = curCat; $('attribution').value = curAttr;
-  // datalist for the Add form
-  const dl = document.getElementById('agentList');
-  if(dl) dl.innerHTML = uniq('agent').map(a => `<option value="${esc(a)}">`).join('');
   refreshPeriods();
 }
 refreshOptionsAll();
@@ -589,6 +587,7 @@ function saveLocal(){
   if(_db){
     MODE = 'db';
     addBtn.style.display = '';
+    document.getElementById('importFile').style.display = '';
     try {
       _unsub = _db.collection('records').onSnapshot(snap => {
         LIVE = (snap.docs || []).map(d => {
@@ -604,6 +603,7 @@ function saveLocal(){
   // Fallback: localStorage (works on GitHub Pages, file://, any static host)
   MODE = 'local';
   addBtn.style.display = '';
+  document.getElementById('importFile').style.display = '';
   document.getElementById('exportJson').style.display = '';
   loadLocal();
   refreshOptionsAll();
@@ -669,6 +669,186 @@ form.addEventListener('submit', async (e) => {
     refreshOptionsAll(); render();
     saveMsg.textContent = 'Saved locally in this browser ✓'; saveMsg.className='save-msg ok';
     setTimeout(closeModal, 700);
+  }
+});
+
+/* ========= Import from Excel (.xlsx) or CSV ========= */
+// Expected columns (any of these header spellings work, case-insensitive):
+//   Call Date | Date, Agent, Program, Category | Reason for Miss,
+//   Issue | Issue Description | Issue details, Attribution | Mistake,
+//   Escalated | Escalated Correctly, Case ID, Case Link, Notes
+const COL = {
+  callDate: ['call date','date','calldate'],
+  agent: ['agent','agent name'],
+  program: ['program','program name'],
+  category: ['category','issue category','reason for miss','reason'],
+  issue: ['issue','issue description','issue details','description'],
+  mistake: ['attribution','mistake','mistake attribution','attributed to'],
+  escalated: ['escalated correctly','escalated','escalate'],
+  caseId: ['case id','caseid','case'],
+  caseLink: ['case link','case url','caselink','link','url'],
+  notes: ['notes','comment','comments','note']
+};
+function headerMap(headers){
+  const out = {}; const h = headers.map(x => String(x||'').trim().toLowerCase());
+  Object.keys(COL).forEach(k => {
+    const idx = h.findIndex(hh => COL[k].includes(hh));
+    if(idx >= 0) out[k] = idx;
+  });
+  return out;
+}
+function parseCSV(text){
+  const rows = []; let cur = [], val = '', inQ = false;
+  for(let i=0; i<text.length; i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ val += '"'; i++; } else { inQ = false; } }
+      else val += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ',') { cur.push(val); val = ''; }
+      else if(c === '\r') { /* skip */ }
+      else if(c === '\n'){ cur.push(val); rows.push(cur); cur = []; val = ''; }
+      else val += c;
+    }
+  }
+  if(val.length || cur.length){ cur.push(val); rows.push(cur); }
+  return rows.filter(r => r.some(x => String(x||'').trim() !== ''));
+}
+function toDisplayDate(v){
+  if(!v) return '';
+  if(v instanceof Date) return v.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  // Excel serial numbers (SheetJS gives Date objects when cellDates:true; fallback below)
+  if(typeof v === 'number'){
+    const epoch = new Date(Date.UTC(1899,11,30));
+    const d = new Date(epoch.getTime() + v*86400000);
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
+  const s = String(v).trim();
+  const d = new Date(s);
+  if(!isNaN(d)) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  return s;
+}
+function monthOf(displayDate){
+  const d = new Date(displayDate);
+  return isNaN(d) ? '' : (d.toLocaleDateString('en-US',{month:'short'}) + '-' + d.getFullYear());
+}
+function normalizeAttribution(v){
+  const s = String(v||'').trim().toLowerCase();
+  if(s.startsWith('hum')) return 'Human';
+  if(s.startsWith('aud')) return 'Auditor';
+  if(s.startsWith('prod')) return 'Product';
+  return v ? String(v) : 'Human';
+}
+function normalizeEscalated(v){
+  const s = String(v||'').trim().toLowerCase();
+  if(['y','yes','true','1'].includes(s)) return 'Yes';
+  if(['n','no','false','0'].includes(s)) return 'No';
+  if(['na','n/a','none','-'].includes(s)) return 'N/A';
+  return v ? String(v) : 'Yes';
+}
+function rowsToRecords(rowArrs){
+  if(rowArrs.length < 2) return { records:[], errors:['File has no data rows'] };
+  const headers = rowArrs[0];
+  const map = headerMap(headers);
+  const required = ['callDate','agent','program','issue'];
+  const missing = required.filter(k => !(k in map));
+  if(missing.length) return { records:[], errors:['Missing required columns: ' + missing.join(', ')] };
+  const recs = []; const errors = [];
+  for(let i=1; i<rowArrs.length; i++){
+    const r = rowArrs[i];
+    const get = k => (k in map) ? r[map[k]] : '';
+    const callDate = toDisplayDate(get('callDate'));
+    if(!callDate) { errors.push('Row '+(i+1)+': missing/invalid Call Date'); continue; }
+    const rec = {
+      callDate,
+      month: monthOf(callDate),
+      agent: String(get('agent')||'').trim(),
+      program: String(get('program')||'').trim(),
+      category: String(get('category')||'').trim(),
+      issue: String(get('issue')||'').trim(),
+      mistake: normalizeAttribution(get('mistake')),
+      escalated: normalizeEscalated(get('escalated')),
+      caseId: String(get('caseId')||'').trim(),
+      caseLink: String(get('caseLink')||'').trim(),
+      resolved: '',
+      notes: String(get('notes')||'').trim(),
+      createdAt: Date.now()
+    };
+    if(!rec.agent || !rec.issue){ errors.push('Row '+(i+1)+': missing Agent or Issue'); continue; }
+    recs.push(rec);
+  }
+  return { records:recs, errors };
+}
+
+// Lazy-load SheetJS from CDN (works on GitHub Pages; blocked on claude.ai artifacts — we fall back to CSV)
+let _xlsxTried = false;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(_xlsxTried) return Promise.resolve(null);
+  _xlsxTried = true;
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => resolve(window.XLSX || null);
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+    setTimeout(() => resolve(window.XLSX || null), 8000);
+  });
+}
+
+async function readFileAsRows(file){
+  const name = file.name.toLowerCase();
+  if(name.endsWith('.csv') || name.endsWith('.tsv') || file.type === 'text/csv'){
+    const text = await file.text();
+    const sep = name.endsWith('.tsv') ? '\t' : ',';
+    if(sep === '\t'){
+      return text.split(/\r?\n/).filter(l => l.length).map(l => l.split('\t'));
+    }
+    return parseCSV(text);
+  }
+  // xlsx / xls
+  const XLSX = await loadXLSX();
+  if(!XLSX){
+    throw new Error('Excel parser could not be loaded on this page (external scripts are blocked). Please re-save the file as CSV in Excel and try again.');
+  }
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type:'array', cellDates:true });
+  const sheetName = wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true, defval:'' });
+  return rows;
+}
+
+document.getElementById('importFile').addEventListener('click', () => {
+  document.getElementById('importInput').click();
+});
+document.getElementById('importInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  let rows;
+  try { rows = await readFileAsRows(file); }
+  catch(err){ alert('Import failed: ' + (err?.message || err)); return; }
+  const { records, errors } = rowsToRecords(rows);
+  if(!records.length){ alert('No records imported.\n\n' + errors.slice(0,5).join('\n')); return; }
+  if(!confirm(`Import ${records.length} record${records.length===1?'':'s'} from ${file.name}?` + (errors.length ? `\n(${errors.length} row${errors.length===1?'':'s'} will be skipped)` : ''))) return;
+
+  if(MODE === 'db'){
+    let ok = 0, fail = 0;
+    for(const rec of records){
+      const id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+      try { await _db.doc('records/' + id).set(rec); ok++; }
+      catch(err){ fail++; }
+    }
+    alert(`Imported ${ok} record${ok===1?'':'s'} to the shared store` + (fail?`\n${fail} failed`:'') + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped (bad data)`:''));
+  } else if(MODE === 'local'){
+    records.forEach(rec => {
+      const id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+      LIVE.push(Object.assign({}, rec, { _id: id }));
+    });
+    saveLocal(); refreshOptionsAll(); render();
+    alert(`Imported ${records.length} record${records.length===1?'':'s'} locally` + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped`:'') + '\n\nUse "Export merged JSON" to sync to GitHub.');
   }
 });
 
