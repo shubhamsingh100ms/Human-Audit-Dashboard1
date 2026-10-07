@@ -832,9 +832,33 @@ document.getElementById('importInput').addEventListener('change', async (e) => {
   let rows;
   try { rows = await readFileAsRows(file); }
   catch(err){ alert('Import failed: ' + (err?.message || err)); return; }
-  const { records, errors } = rowsToRecords(rows);
-  if(!records.length){ alert('No records imported.\n\n' + errors.slice(0,5).join('\n')); return; }
-  if(!confirm(`Import ${records.length} record${records.length===1?'':'s'} from ${file.name}?` + (errors.length ? `\n(${errors.length} row${errors.length===1?'':'s'} will be skipped)` : ''))) return;
+  const { records: parsed, errors } = rowsToRecords(rows);
+  if(!parsed.length){ alert('No records imported.\n\n' + errors.slice(0,5).join('\n')); return; }
+
+  // Deduplicate against what's already in the dashboard
+  const keyOf = r => {
+    const cid = String(r.caseId||'').trim().toLowerCase();
+    if(cid) return 'c:' + cid;
+    return 'f:' + [r.callDate, r.agent, r.issue].map(x => String(x||'').trim().toLowerCase()).join('|');
+  };
+  const existingKeys = new Set(allRows().map(keyOf));
+  const seenInFile = new Set();
+  const records = [], dupes = [];
+  for(const rec of parsed){
+    const k = keyOf(rec);
+    if(existingKeys.has(k) || seenInFile.has(k)){ dupes.push(rec); continue; }
+    seenInFile.add(k);
+    records.push(rec);
+  }
+
+  if(!records.length){
+    alert(`Nothing new to import.\n\n${parsed.length} row${parsed.length===1?'':'s'} in the file — all already in the dashboard.`);
+    return;
+  }
+  const parts = [`Import ${records.length} new record${records.length===1?'':'s'} from ${file.name}?`];
+  if(dupes.length) parts.push(`${dupes.length} duplicate${dupes.length===1?'':'s'} will be skipped (already in dashboard)`);
+  if(errors.length) parts.push(`${errors.length} row${errors.length===1?'':'s'} will be skipped (bad data)`);
+  if(!confirm(parts.join('\n'))) return;
 
   if(MODE === 'db'){
     let ok = 0, fail = 0;
@@ -843,14 +867,14 @@ document.getElementById('importInput').addEventListener('change', async (e) => {
       try { await _db.doc('records/' + id).set(rec); ok++; }
       catch(err){ fail++; }
     }
-    alert(`Imported ${ok} record${ok===1?'':'s'} to the shared store` + (fail?`\n${fail} failed`:'') + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped (bad data)`:''));
+    alert(`Imported ${ok} new record${ok===1?'':'s'} to the shared store` + (fail?`\n${fail} failed`:'') + (dupes.length?`\n${dupes.length} duplicate${dupes.length===1?'':'s'} skipped`:'') + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped (bad data)`:''));
   } else if(MODE === 'local'){
     records.forEach(rec => {
       const id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
       LIVE.push(Object.assign({}, rec, { _id: id }));
     });
     saveLocal(); refreshOptionsAll(); render();
-    alert(`Imported ${records.length} record${records.length===1?'':'s'} locally` + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped`:'') + '\n\nUse "Export merged JSON" to sync to GitHub.');
+    alert(`Imported ${records.length} new record${records.length===1?'':'s'} locally` + (dupes.length?`\n${dupes.length} duplicate${dupes.length===1?'':'s'} skipped`:'') + (errors.length?`\n${errors.length} row${errors.length===1?'':'s'} skipped (bad data)`:'') + '\n\nUse "Export merged JSON" to sync to GitHub.');
   }
 });
 
