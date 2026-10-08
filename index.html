@@ -128,16 +128,6 @@ td a:hover{text-decoration:underline}
 
 .foot{color:var(--muted);font-size:11px;margin:18px 2px 0;line-height:1.6}
 
-/* Auth gate */
-.auth-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.auth-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:36px 32px;width:min(420px,100%);text-align:center;box-shadow:0 24px 60px rgba(15,23,42,.08)}
-.auth-brand{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-0.01em}
-.auth-sub{font-size:13px;color:var(--muted);margin-top:8px}
-.auth-err{font-size:12.5px;color:var(--rose);min-height:18px;margin-top:4px}
-.auth-foot{font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:.03em}
-body.auth-locked{overflow:hidden}
-body.auth-locked > main{filter:blur(6px);pointer-events:none;user-select:none}
-
 /* Add-record modal */
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
 .modal[hidden]{display:none}
@@ -191,51 +181,6 @@ body.auth-locked > main{filter:blur(6px);pointer-events:none;user-select:none}
 </style>
 <title>Human Audit Dashboard</title>
 </head><body>
-<!-- ========= 100ms sign-in gate ========= -->
-<div id="authGate" class="auth-overlay">
-  <div class="auth-card">
-    <div class="auth-brand">Human Audit Dashboard</div>
-    <div class="auth-sub">Sign in with your 100ms Google account to continue.</div>
-    <div id="g_id_signin" style="margin:18px 0;display:flex;justify-content:center"></div>
-    <div id="authErr" class="auth-err"></div>
-    <div class="auth-foot">Only <b>@100ms.live</b> accounts have access.</div>
-  </div>
-</div>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>
-window.AUTH_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-window.AUTH_DOMAIN   = '100ms.live';
-(function(){
-  const KEY = 'auth_email_v1';
-  const already = sessionStorage.getItem(KEY) || '';
-  const gate = document.getElementById('authGate');
-  function allow(email){ sessionStorage.setItem(KEY, email || ''); gate.style.display='none'; document.body.classList.remove('auth-locked'); }
-  function deny(msg){ const el=document.getElementById('authErr'); if(el) el.textContent = msg||'Access denied.'; sessionStorage.removeItem(KEY); try{if(window.google?.accounts?.id?.disableAutoSelect) google.accounts.id.disableAutoSelect();}catch(e){} }
-  if(already && already.toLowerCase().endsWith('@' + window.AUTH_DOMAIN)){ allow(already); }
-  else { document.body.classList.add('auth-locked'); }
-  window.onGoogleCredential = function(res){
-    try {
-      const payload = JSON.parse(atob(res.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-      const email = (payload.email||'').toLowerCase();
-      const ok = payload.email_verified && email.endsWith('@' + window.AUTH_DOMAIN) && (!payload.hd || payload.hd === window.AUTH_DOMAIN);
-      if(ok) return allow(email);
-      deny('Access denied. Only ' + window.AUTH_DOMAIN + ' accounts can view this dashboard.');
-    } catch(e){ deny('Sign-in failed.'); }
-  };
-  function initGSI(){
-    if(!window.google?.accounts?.id) return setTimeout(initGSI, 150);
-    if(!window.AUTH_CLIENT_ID || window.AUTH_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')){
-      deny('Dashboard not configured yet — the owner needs to set up a Google OAuth Client ID.');
-      return;
-    }
-    google.accounts.id.initialize({ client_id: window.AUTH_CLIENT_ID, callback: window.onGoogleCredential, hd: window.AUTH_DOMAIN, auto_select: true, ux_mode: 'popup' });
-    google.accounts.id.renderButton(document.getElementById('g_id_signin'), { theme:'filled_blue', size:'large', text:'signin_with', shape:'rectangular', width:260 });
-    if(!already) google.accounts.id.prompt();
-  }
-  if(!already || !already.toLowerCase().endsWith('@' + window.AUTH_DOMAIN)) initGSI();
-})();
-</script>
-
 <main class="wrap">
 <header class="top">
   <div class="title-row">
