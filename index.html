@@ -293,7 +293,7 @@ window.DATA=[];
    To make the sheet visible to every viewer on GitHub Pages, paste your
    "File → Share → Publish to web → CSV" URL between the quotes below and commit.
    Everyone who opens the page will auto-fetch it; no setup on their side.      */
-window.SHEET_URL_DEFAULT = '';
+window.SHEET_URL_DEFAULT = 'https://docs.google.com/spreadsheets/d/1QKmcjNdB3yRrnZO1hHd_PP4QPOtndSM68ju4k35NEwg/export?format=csv&gid=1997095335';
 window.SHEET_INTERVAL_DEFAULT = 300;
 const SEED = window.DATA;
 let LIVE = [];                          // records added via the modal, synced from db
@@ -727,15 +727,18 @@ function parseCSV(text){
   return rows.filter(r => r.some(x => String(x||'').trim() !== ''));
 }
 const _MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const _fmt = (y,m,d) => `${_MON[m]} ${d}, ${y}`;
+const _MON_IDX = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,sept:8,oct:9,nov:10,dec:11,
+                  january:0,february:1,march:2,april:3,june:5,july:6,august:7,september:8,october:9,november:10,december:11};
+const _fmt = (y,m,d) => (y && m>=0 && m<12 && d>=1 && d<=31) ? `${_MON[m]} ${d}, ${y}` : '';
+function _validDay(y,m,d){ return y>=1900 && y<=2100 && m>=0 && m<12 && d>=1 && d<=31; }
+
 function toDisplayDate(v){
-  if(!v && v !== 0) return '';
-  // SheetJS with cellDates:true gives Date objects representing the Excel day — use LOCAL parts,
-  // which match the day Excel shows regardless of the user's timezone.
+  if(v === null || v === undefined || v === '') return '';
+  // SheetJS Date — read LOCAL parts (matches the day Excel shows in IST)
   if(v instanceof Date){
     return _fmt(v.getFullYear(), v.getMonth(), v.getDate());
   }
-  // Excel serial number — do UTC math and read UTC parts (no TZ shift)
+  // Excel serial number — UTC math + UTC readout (no TZ drift)
   if(typeof v === 'number'){
     const epoch = new Date(Date.UTC(1899,11,30));
     const d = new Date(epoch.getTime() + Math.round(v)*86400000);
@@ -743,13 +746,43 @@ function toDisplayDate(v){
   }
   let s = String(v).trim();
   if(!s) return '';
-  // Bare ISO date (YYYY-M-D or YYYY/M/D) — treat as calendar day, no TZ math
-  const m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-  if(m) return _fmt(+m[1], +m[2]-1, +m[3]);
-  // DD/MM/YYYY or DD-MM-YYYY (common in India)
-  const m2 = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
-  if(m2) return _fmt(+m2[3], +m2[2]-1, +m2[1]);
-  // Last resort — parse and read LOCAL parts (user is in IST)
+
+  // 1) ISO: YYYY-M-D or YYYY/M/D (also handles YYYY-MM-DDTHH:MM:SS prefix)
+  let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[T ].*)?$/);
+  if(m){
+    const y=+m[1], mo=+m[2]-1, d=+m[3];
+    if(_validDay(y,mo,d)) return _fmt(y, mo, d);
+  }
+
+  // 2) D/M/YYYY or M/D/YYYY (also "-" and ".")
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/);
+  if(m){
+    let a=+m[1], b=+m[2], y=+m[3];
+    if(y < 100) y += 2000;
+    // If a > 12 → must be D/M/Y (day-first)
+    if(a > 12 && b <= 12 && _validDay(y, b-1, a)) return _fmt(y, b-1, a);
+    // If b > 12 → must be M/D/Y (US)
+    if(b > 12 && a <= 12 && _validDay(y, a-1, b)) return _fmt(y, a-1, b);
+    // Ambiguous (both ≤ 12). Default to M/D/Y (Google Sheets' US-locale export default).
+    if(_validDay(y, a-1, b)) return _fmt(y, a-1, b);
+    if(_validDay(y, b-1, a)) return _fmt(y, b-1, a);
+  }
+
+  // 3) "Sep 29, 2026" / "29 Sep 2026" / "29-Sep-2026" / "September 29, 2026"
+  m = s.match(/^([A-Za-z]+)[\s,\-\/.]+(\d{1,2})[,\s\-\/.]+(\d{4})$/);
+  if(m){
+    const mo = _MON_IDX[m[1].toLowerCase()];
+    const d=+m[2], y=+m[3];
+    if(mo !== undefined && _validDay(y, mo, d)) return _fmt(y, mo, d);
+  }
+  m = s.match(/^(\d{1,2})[\s\-\/.]+([A-Za-z]+)[\s\-\/.,]+(\d{4})$/);
+  if(m){
+    const mo = _MON_IDX[m[2].toLowerCase()];
+    const d=+m[1], y=+m[3];
+    if(mo !== undefined && _validDay(y, mo, d)) return _fmt(y, mo, d);
+  }
+
+  // 4) Fallback — Date() parses then LOCAL parts
   const d = new Date(s);
   if(!isNaN(d)) return _fmt(d.getFullYear(), d.getMonth(), d.getDate());
   return s;
