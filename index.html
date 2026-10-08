@@ -293,7 +293,7 @@ window.DATA=[];
    To make the sheet visible to every viewer on GitHub Pages, paste your
    "File → Share → Publish to web → CSV" URL between the quotes below and commit.
    Everyone who opens the page will auto-fetch it; no setup on their side.      */
-window.SHEET_URL_DEFAULT = 'https://docs.google.com/spreadsheets/d/1QKmcjNdB3yRrnZO1hHd_PP4QPOtndSM68ju4k35NEwg/export?format=csv&gid=1997095335';
+window.SHEET_URL_DEFAULT = '';
 window.SHEET_INTERVAL_DEFAULT = 300;
 const SEED = window.DATA;
 let LIVE = [];                          // records added via the modal, synced from db
@@ -1002,8 +1002,11 @@ function updateSheetStatus(){
 }
 
 function activeSheetUrl(){
-  // personal override wins; otherwise the baked-in default visible to every viewer
-  return localStorage.getItem(SHEET_URL_KEY) || (window.SHEET_URL_DEFAULT || '');
+  // explicit personal override wins (including explicit empty "disabled");
+  // otherwise fall back to the baked-in default visible to every viewer
+  const saved = localStorage.getItem(SHEET_URL_KEY);
+  if(saved !== null) return saved;
+  return window.SHEET_URL_DEFAULT || '';
 }
 function activeSheetInterval(){
   return Math.max(30, +(localStorage.getItem(SHEET_INT_KEY) || window.SHEET_INTERVAL_DEFAULT || 300));
@@ -1047,11 +1050,12 @@ document.getElementById('linkSheet').addEventListener('click', () => {
   if(url === null) return;      // cancelled
   const u = normalizeSheetUrl(url);
   if(!u){
-    localStorage.removeItem(SHEET_URL_KEY);
+    // Explicit disable — empty string in localStorage overrides any baked-in default
+    localStorage.setItem(SHEET_URL_KEY, '');
     SHEET = []; _sheetLastOK = null; _sheetLastErr = null;
     if(_sheetTimer){ clearInterval(_sheetTimer); _sheetTimer = null; }
     updateSheetStatus(); refreshOptionsAll(); render();
-    alert('Google Sheet unlinked.');
+    alert('Google Sheet unlinked for your browser. (The team default, if any, will still be visible to other viewers until the deployed index.html is updated.)');
     return;
   }
   const intStr = prompt('Refresh every how many seconds? (minimum 30, default 300 = 5 min)', localStorage.getItem(SHEET_INT_KEY) || '300');
