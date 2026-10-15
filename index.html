@@ -128,6 +128,16 @@ td a:hover{text-decoration:underline}
 
 .foot{color:var(--muted);font-size:11px;margin:18px 2px 0;line-height:1.6}
 
+/* Date range popover */
+.daterange-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.14);padding:12px;min-width:240px}
+.daterange-pop .dr-row{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.daterange-pop .dr-row label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0}
+.daterange-pop .dr-row input{height:34px}
+.daterange-pop .dr-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.daterange-pop .dr-foot button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;padding:6px 12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.daterange-pop .dr-foot .dr-apply{background:var(--brand);color:#fff;border-color:var(--brand)}
+.daterange-pop .dr-foot button:hover{filter:brightness(.96)}
+
 /* Add-record modal */
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
 .modal[hidden]{display:none}
@@ -233,7 +243,17 @@ td a:hover{text-decoration:underline}
   </div>
   <div class="field"><label id="periodLabel" for="period">Choose month</label>
     <select id="period"><option value="">All months</option></select>
-    <input id="calendarDate" type="date" aria-label="Choose a specific audit date" hidden>
+    <div id="dateRangeWrap" style="display:none;position:relative">
+      <input id="dateRangeTrigger" type="text" readonly placeholder="Select date range…" aria-label="Date range" style="width:100%;cursor:pointer">
+      <div id="dateRangePop" class="daterange-pop" hidden>
+        <div class="dr-row"><label>From</label><input id="dateFrom" type="date"></div>
+        <div class="dr-row"><label>To</label><input id="dateTo" type="date"></div>
+        <div class="dr-foot">
+          <button type="button" class="dr-clear" id="dateRangeClear">Clear</button>
+          <button type="button" class="dr-apply" id="dateRangeApply">Apply</button>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="field"><label for="agent">Agent</label><select id="agent"></select></div>
   <div class="field"><label for="program">Program</label><select id="program"></select></div>
@@ -304,7 +324,7 @@ const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;'
 const fields = ['agent','program','attribution','category'];
 const ATTR_COLOR = { Human:'#BE123C', Auditor:'#D97706', Product:'#6D28D9' };
 const PROG_COLORS = ['#0D9488','#047857','#2563EB','#9333EA','#EA580C'];
-let focus = null, exactCalendarDate = '';
+let focus = null, dateFrom = '', dateTo = '';
 
 function uniq(k){ return [...new Set(allRows().map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function options(id, values, label){
@@ -343,8 +363,8 @@ function refreshPeriods(){
 function syncPeriodControl(){
   const isDay = $('grain').value==='day';
   $('period').hidden = isDay;
-  $('calendarDate').hidden = !isDay;
-  $('periodLabel').textContent = isDay ? 'Choose date' : ($('grain').value==='week' ? 'Choose week' : 'Choose month');
+  $('dateRangeWrap').style.display = isDay ? 'flex' : 'none';
+  $('periodLabel').textContent = isDay ? 'Date range' : ($('grain').value==='week' ? 'Choose week' : 'Choose month');
 }
 refreshPeriods(); syncPeriodControl();
 
@@ -352,7 +372,8 @@ function filtered(){
   const q = $('search').value.toLowerCase().trim();
   const sp = $('period').value;
   return allRows().filter(r =>
-    (!exactCalendarDate || isoDate(dateObj(r))===exactCalendarDate) &&
+    (!dateFrom || isoDate(dateObj(r)) >= dateFrom) &&
+    (!dateTo   || isoDate(dateObj(r)) <= dateTo) &&
     (!sp || periodKey(r)===sp) &&
     (!$('agent').value || r.agent===$('agent').value) &&
     (!$('program').value || r.program===$('program').value) &&
@@ -494,9 +515,17 @@ function kpis(rows){
 function render(){
   const rows = filtered();
   const sel = focus ? `${focus.value} · ` : '';
-  const label = exactCalendarDate
-    ? new Date(exactCalendarDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-    : ($('period').value || ('All ' + $('grain').value + 's'));
+  const fmtIso = iso => iso ? new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  let label;
+  if($('grain').value==='day'){
+    if(dateFrom && dateTo && dateFrom===dateTo) label = fmtIso(dateFrom);
+    else if(dateFrom && dateTo) label = `${fmtIso(dateFrom)} → ${fmtIso(dateTo)}`;
+    else if(dateFrom) label = `From ${fmtIso(dateFrom)}`;
+    else if(dateTo) label = `Through ${fmtIso(dateTo)}`;
+    else label = 'All days';
+  } else {
+    label = $('period').value || ('All ' + $('grain').value + 's');
+  }
   $('periodBadge').textContent = sel + label;
 
   kpis(rows);
@@ -524,14 +553,53 @@ function render(){
 }
 
 fields.forEach(id => $(id).addEventListener('change', render));
-$('period').addEventListener('change', () => { exactCalendarDate=''; $('calendarDate').value=''; render(); });
-$('calendarDate').addEventListener('change', () => { exactCalendarDate = $('calendarDate').value || ''; render(); });
-$('grain').addEventListener('change', () => { exactCalendarDate=''; refreshPeriods(); $('period').value=''; $('calendarDate').value=''; syncPeriodControl(); render(); });
+function updateRangeTrigger(){
+  const fmtIso = iso => iso ? new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  let txt = '';
+  if(dateFrom && dateTo && dateFrom===dateTo) txt = fmtIso(dateFrom);
+  else if(dateFrom && dateTo) txt = `${fmtIso(dateFrom)} → ${fmtIso(dateTo)}`;
+  else if(dateFrom) txt = `From ${fmtIso(dateFrom)}`;
+  else if(dateTo) txt = `Through ${fmtIso(dateTo)}`;
+  $('dateRangeTrigger').value = txt;
+}
+$('period').addEventListener('change', () => { dateFrom=''; dateTo=''; $('dateFrom').value=''; $('dateTo').value=''; updateRangeTrigger(); render(); });
+$('dateRangeTrigger').addEventListener('click', () => {
+  const pop = $('dateRangePop');
+  pop.hidden = !pop.hidden;
+});
+document.addEventListener('click', (e) => {
+  const pop = $('dateRangePop'); if(!pop || pop.hidden) return;
+  if(e.target.closest('#dateRangeWrap')) return;
+  pop.hidden = true;
+});
+$('dateRangeApply').addEventListener('click', () => {
+  dateFrom = $('dateFrom').value || '';
+  dateTo = $('dateTo').value || '';
+  if(dateFrom && dateTo && dateFrom > dateTo){ [dateFrom, dateTo] = [dateTo, dateFrom]; $('dateFrom').value=dateFrom; $('dateTo').value=dateTo; }
+  updateRangeTrigger();
+  $('dateRangePop').hidden = true;
+  render();
+});
+$('dateRangeClear').addEventListener('click', () => {
+  dateFrom=''; dateTo='';
+  $('dateFrom').value=''; $('dateTo').value='';
+  updateRangeTrigger();
+  $('dateRangePop').hidden = true;
+  render();
+});
+$('grain').addEventListener('change', () => {
+  dateFrom=''; dateTo=''; refreshPeriods();
+  $('period').value=''; $('dateFrom').value=''; $('dateTo').value='';
+  updateRangeTrigger();
+  $('dateRangePop').hidden = true;
+  syncPeriodControl(); render();
+});
 $('search').addEventListener('input', render);
 $('reset').onclick = () => {
   fields.forEach(id => $(id).value='');
-  focus = null; exactCalendarDate='';
-  $('period').value=''; $('grain').value='month'; $('calendarDate').value=''; $('search').value='';
+  focus = null; dateFrom=''; dateTo='';
+  $('period').value=''; $('grain').value='month'; $('dateFrom').value=''; $('dateTo').value=''; $('search').value='';
+  updateRangeTrigger();
   refreshPeriods(); syncPeriodControl(); render();
 };
 let _downloads = null;
